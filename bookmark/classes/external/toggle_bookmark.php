@@ -1,10 +1,11 @@
 <?php
 namespace local_bookmark\external;
 
-use external_function_parameters;
-use external_value;
+use external_function_parameters;                                                                  use external_value;
 use external_api;
-use core_user;
+use external_single_structure;
+
+defined('MOODLE_INTERNAL') || die();
 
 class toggle_bookmark extends external_api {
     public static function execute_parameters() {
@@ -14,11 +15,9 @@ class toggle_bookmark extends external_api {
     }
 
     public static function execute($courseid) {
-        global $USER, $DB, $CFG;
-        require_once($CFG->libdir . '/dml/moodle_database.php');
+        global $USER, $DB;
 
         $record = $DB->get_record('local_bookmark', ['userid' => $USER->id, 'courseid' => $courseid]);
-
         if ($record) {
             $DB->delete_records('local_bookmark', ['id' => $record->id]);
             return ['status' => 'removed'];

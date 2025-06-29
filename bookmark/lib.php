@@ -1,14 +1,31 @@
 <?php
-function local_bookmark_extend_navigation_user($navigation, $user, $usercontext, $course, $context) {
-    global $PAGE, $USER;
 
-    // Only show for the logged-in user viewing their own profile
+defined('MOODLE_INTERNAL') || die();
+
+function local_bookmark_register_hook_callbacks(): void {
+    // Only register if the hook system is available
+    if (class_exists('\core\hook\dispatcher_interface')) {
+        try {
+            \core\di::get(\core\hook\dispatcher_interface::class)
+                ->register_listener(
+                    \local_bookmark\hook\before_http_headers_listener::class,
+                    \core\hook\output\before_http_headers::class
+                );
+        } catch (\Exception $e) {
+            // Silently fail during installation/upgrade
+            debugging('Failed to register hook: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+}
+
+function local_bookmark_extend_navigation_user($navigation, $user, $usercontext, $course, $context) {
+    global $USER;
+
     if ($USER->id !== $user->id) {
         return;
     }
 
     $url = new moodle_url('/local/bookmark/index.php', ['userid' => $user->id]);
-
     $node = navigation_node::create(
         get_string('pluginname', 'local_bookmark'),
         $url,
@@ -17,16 +34,37 @@ function local_bookmark_extend_navigation_user($navigation, $user, $usercontext,
         'local_bookmark',
         new pix_icon('i/star', '')
     );
-
     $navigation->add_node($node);
 }
 
+/**
+ * Returns a custom renderer for specific components.
+ * @param string $component
+ * @param \moodle_page $page
+ * @param string $target
+ * @return \core_output\renderer|null
+ */
 function local_bookmark_plugin_renderer_factory($component, $page, $target) {
-    if ($component === 'core') {
-        return new \local_bookmark\output\core_renderer($page, $target);
+    // --- DEBUG START ---
+    error_log("DEBUG: local_bookmark_plugin_renderer_factory called for component: " . $component);
+    // --- DEBUG END ---
+
+    // If you want to override the core course overview renderer for /my/courses.php etc.
+    if ($component === 'core_course') {
+        error_log("DEBUG: local_bookmark_plugin_renderer_factory: Overriding core_course renderer.");
+        require_once(__DIR__ . '/classes/output/course_overview_override_renderer.php'); // Make sure this path is correct
+        return new \local_bookmark\output\course_overview_override_renderer($page, $target);
     }
+    // If you also had a block-specific renderer for 'block_course_overview',
+    // you would put that logic here too:
+    // if ($component === 'block_course_overview') {
+    //     require_once(__DIR__ . '/classes/output/block_course_overview_renderer.php');
+    //     return new \local_bookmark\output\block_course_overview_renderer($page, $target);
+    // }
+
     return null;
 }
+
 
 function local_bookmark_extend_navigation_course($navigation, $course, $context) {
     global $USER, $DB;
@@ -35,13 +73,11 @@ function local_bookmark_extend_navigation_course($navigation, $course, $context)
         return;
     }
 
-    // Check if this course is bookmarked by the current user
     $bookmarked = $DB->record_exists('local_bookmark', ['userid' => $USER->id, 'courseid' => $course->id]);
-
     $buttontext = $bookmarked ? get_string('removebookmark', 'local_bookmark') : get_string('addbookmark', 'local_bookmark');
     $url = new moodle_url('/local/bookmark/bookmark.php', [
         'courseid' => $course->id,
-        'sesskey' => sesskey()
+        'sesskey' => sesskey(),
     ]);
 
     $node = navigation_node::create(
@@ -55,14 +91,65 @@ function local_bookmark_extend_navigation_course($navigation, $course, $context)
 
     $navigation->add_node($node);
 }
-
 function local_bookmark_myprofile_navigation(core_user\output\myprofile\tree $tree, $user, $iscurrentuser, $course) {
-    global $PAGE;
-    $url = new moodle_url('/local/bookmark/index.php', ['userid' => $user->id]);
-    $node = new core_user\output\myprofile\node('miscellaneous', 'bookmarkedcourses', get_string('bookmarkedcourses', 'local_bookmark'), null, $url);
-    $tree->add_node($node);
-}
+    global $DB, $PAGE;
 
+    // Only show if the user has bookmarks or it's the current user's profile
+    $hasbookmarks = $DB->record_exists('local_bookmark', ['userid' => $user->id]);
+    if (!$hasbookmarks && !$iscurrentuser) {
+        return;
+    }
+
+    // Create the category directly (older Moodle versions)
+    $categoryname = 'local_bookmark';
+    $category = new core_user\output\myprofile\category($categoryname, get_string('bookmarks', 'local_bookmark'));
+    $tree->add_category($category);
+
+    // Add our content as a node
+    $url = new moodle_url('/local/bookmark/index.php', ['userid' => $user->id]);
+
+    // Get bookmarked courses
+    $records = $DB->get_records_sql("
+        SELECT c.id, c.fullname
+        FROM {local_bookmark} b
+        JOIN {course} c ON b.courseid = c.id
+        WHERE b.userid = :userid
+        ORDER BY b.timecreated DESC
+    ", ['userid' => $user->id]);
+
+    if (!empty($records)) {
+        $content = html_writer::start_tag('ul', ['class' => 'bookmarked-courses-list']);
+        foreach ($records as $course) {
+            $courseurl = new moodle_url('/course/view.php', ['id' => $course->id]);
+            $content .= html_writer::tag('li',
+                html_writer::link($courseurl, format_string($course->fullname)),
+                ['class' => 'bookmarked-course']
+            );
+        }
+        $content .= html_writer::end_tag('ul');
+
+        // Add "View all" link
+        $content .= html_writer::div(
+            html_writer::link($url, get_string('viewallbookmarks', 'local_bookmark')),
+            'view-all-bookmarks'
+        );
+    } else {
+        $content = html_writer::div(
+            get_string('nobookmarkedcourses', 'local_bookmark'),
+            'no-bookmarks'
+        );
+    }
+
+    $node = new core_user\output\myprofile\node(
+        $categoryname,
+        'bookmarkedcourses',
+        get_string('bookmarkedcourses', 'local_bookmark'),
+        null,
+        null,
+        $content
+    );
+    $category->add_node($node);
+}
 function local_bookmark_extend_navigation_frontpage($navigation) {
     global $USER;
 
@@ -80,3 +167,44 @@ function local_bookmark_extend_navigation_frontpage($navigation) {
     $navigation->add_node($node);
 }
 
+function local_bookmark_course_list_item($course) {
+    global $USER, $DB;
+
+    $bookmarked = $DB->record_exists('local_bookmark', ['userid' => $USER->id, 'courseid' => $course->id]);
+
+    return [
+        'id' => $course->id,
+        'fullname' => format_string($course->fullname),
+        'viewurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(),
+        'bookmarked' => $bookmarked,
+        'bookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
+            'courseid' => $course->id,
+            'sesskey' => sesskey(),
+        ]))->out(false),
+        'unbookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
+            'courseid' => $course->id,
+            'sesskey' => sesskey(),
+        ]))->out(false),
+    ];
+}
+
+function local_bookmark_prepare_course_data($course) {
+    global $USER, $DB;
+
+    $bookmarked = $DB->record_exists('local_bookmark', ['userid' => $USER->id, 'courseid' => $course->id]);
+
+    return [
+        'id' => $course->id,
+        'fullname' => format_string($course->fullname),
+        'viewurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(),
+        'bookmarked' => $bookmarked,
+        'bookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
+            'courseid' => $course->id,
+            'sesskey' => sesskey(),
+        ]))->out(false),
+        'unbookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
+            'courseid' => $course->id,
+            'sesskey' => sesskey(),
+        ]))->out(false),
+    ];
+}

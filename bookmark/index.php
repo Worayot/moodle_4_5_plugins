@@ -1,18 +1,19 @@
 <?php
 require_once(__DIR__ . '/../../config.php');
+require_once(__DIR__ . '/lib.php');
 require_login();
 
 global $USER, $DB, $OUTPUT, $PAGE;
 
-$userid = required_param('userid', PARAM_INT);
+$userid = $USER->id; // Always use the currently logged-in user's ID
 
-if ($USER->id !== $userid && !is_siteadmin()) {
-    throw new moodle_exception('nopermissions', 'error', '', 'view user bookmarks');
+// Check capability for current user (the one logged in, not $userid param)
+if (!has_capability('local/bookmark:view', context_user::instance($USER->id))) {
+    throw new moodle_exception('nopermissions', 'error', '', 'view bookmarks capability');
 }
 
-// ✅ Required for correct Moodle rendering
-$PAGE->set_url(new moodle_url('/local/bookmark/index.php', ['userid' => $userid]));
-$PAGE->set_context(context_user::instance($userid)); // or use context_system::instance()
+$PAGE->set_url(new moodle_url('/local/bookmark/index.php'));
+$PAGE->set_context(context_user::instance($userid));
 $PAGE->set_title(get_string('bookmarkedcourses', 'local_bookmark'));
 $PAGE->set_heading(get_string('bookmarkedcourses', 'local_bookmark'));
 
@@ -25,16 +26,9 @@ $records = $DB->get_records_sql("
 
 $courses = [];
 foreach ($records as $record) {
-    $courses[] = [
-        'id' => $record->id,
-        'fullname' => format_string($record->fullname),
-        'viewurl' => (new moodle_url('/course/view.php', ['id' => $record->id]))->out(),
-        'unbookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
-            'courseid' => $record->id,
-            'sesskey' => sesskey()
-        ]))->out(false)
-    ];
+    $courses[] = local_bookmark_prepare_course_data($record);
 }
+
 
 echo $OUTPUT->header();
 echo $OUTPUT->render_from_template('local_bookmark/bookmarked_courses', ['courses' => $courses]);
