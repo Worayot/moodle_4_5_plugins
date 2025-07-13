@@ -16,18 +16,27 @@ class toggle_bookmark extends external_api {
 
     public static function execute($courseid) {
         global $USER, $DB;
+        
+        $params = self::validate_parameters(self::execute_parameters(), ['courseid' => $courseid]);
+        debugging("Bookmark toggle called for course $courseid by user $USER->id", DEBUG_DEVELOPER);
+        
+        $record = $DB->get_record('local_bookmark', [
+            'userid' => $USER->id, 
+            'courseid' => $params['courseid']
+        ]);
 
-        $record = $DB->get_record('local_bookmark', ['userid' => $USER->id, 'courseid' => $courseid]);
-        if ($record) {
+         if ($record) {
             $DB->delete_records('local_bookmark', ['id' => $record->id]);
-            return ['status' => 'removed'];
+            debugging("Bookmark removed", DEBUG_DEVELOPER);
+            return ['status' => 'removed', 'courseid' => $params['courseid']];
         } else {
-            $DB->insert_record('local_bookmark', [
+            $newrecord = (object)[
                 'userid' => $USER->id,
-                'courseid' => $courseid,
+                'courseid' => $params['courseid'],
                 'timecreated' => time()
-            ]);
-            return ['status' => 'added'];
+            ];
+            $DB->insert_record('local_bookmark', $newrecord);
+            return ['status' => 'added', 'courseid' => $params['courseid']];
         }
     }
 

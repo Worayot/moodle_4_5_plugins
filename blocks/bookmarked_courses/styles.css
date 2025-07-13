@@ -1,0 +1,27 @@
+.bookmarked-courses-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bookmarked-course {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bookmarked-course:last-child {
+    border-bottom: none;
+}
+
+.bookmarked-course .course-link {
+    flex-grow: 1;
+    margin-right: 8px;
+}
+
+.bookmarked-course .remove-bookmark {
+    color: #dc3545;
+    text-decoration: none;
+}

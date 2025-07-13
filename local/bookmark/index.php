@@ -5,6 +5,8 @@ require_login();
 
 global $USER, $DB, $OUTPUT, $PAGE;
 
+$PAGE->requires->js_call_amd('local_bookmark/init', 'init');
+
 $userid = $USER->id; // Always use the currently logged-in user's ID
 
 // Check capability for current user (the one logged in, not $userid param)
@@ -26,9 +28,21 @@ $records = $DB->get_records_sql("
 
 $courses = [];
 foreach ($records as $record) {
-    $courses[] = local_bookmark_prepare_course_data($record);
+   $courses[] = [
+    'id' => $record->id,
+    'fullname' => format_string($record->fullname),
+    'viewurl' => (new moodle_url('/course/view.php', ['id' => $record->id]))->out(),
+    'bookmarked' => true,
+    'bookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
+        'courseid' => $record->id,
+        'sesskey' => sesskey(),
+    ]))->out(false),
+    'unbookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
+        'courseid' => $record->id,
+        'sesskey' => sesskey(),
+    ]))->out(false),
+    ];
 }
-
 
 echo $OUTPUT->header();
 echo $OUTPUT->render_from_template('local_bookmark/bookmarked_courses', ['courses' => $courses]);

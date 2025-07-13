@@ -1,0 +1,22 @@
+<h3>{{#str}}bookmarkedcourses, local_bookmark{{/str}}</h3>
+
+<div class="bookmarked-courses-list">
+  {{#courses}}
+  <div class="bookmarked-course" data-courseid="{{id}}">
+    <a href="{{viewurl}}" class="course-link">{{fullname}}</a>
+    <a href="{{unbookmarkurl}}" class="btn btn-danger">
+      {{#str}}removebookmark, local_bookmark{{/str}}
+    </a>
+  </div>
+  {{/courses}}
+</div>
+
+{{^courses}}
+  <p class="alert alert-info">{{#str}}nobookmarks, local_bookmark{{/str}}</p>
+{{/courses}}
+
+{{#js}}
+require(['local_bookmark/init'], function(bookmark) {
+    bookmark.init();
+});
+{{/js}}

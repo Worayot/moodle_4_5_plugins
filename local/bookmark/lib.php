@@ -55,16 +55,9 @@ function local_bookmark_plugin_renderer_factory($component, $page, $target) {
         require_once(__DIR__ . '/classes/output/course_overview_override_renderer.php'); // Make sure this path is correct
         return new \local_bookmark\output\course_overview_override_renderer($page, $target);
     }
-    // If you also had a block-specific renderer for 'block_course_overview',
-    // you would put that logic here too:
-    // if ($component === 'block_course_overview') {
-    //     require_once(__DIR__ . '/classes/output/block_course_overview_renderer.php');
-    //     return new \local_bookmark\output\block_course_overview_renderer($page, $target);
-    // }
 
     return null;
 }
-
 
 function local_bookmark_extend_navigation_course($navigation, $course, $context) {
     global $USER, $DB;
@@ -91,6 +84,7 @@ function local_bookmark_extend_navigation_course($navigation, $course, $context)
 
     $navigation->add_node($node);
 }
+
 function local_bookmark_myprofile_navigation(core_user\output\myprofile\tree $tree, $user, $iscurrentuser, $course) {
     global $DB, $PAGE;
 
@@ -150,6 +144,7 @@ function local_bookmark_myprofile_navigation(core_user\output\myprofile\tree $tr
     );
     $category->add_node($node);
 }
+
 function local_bookmark_extend_navigation_frontpage($navigation) {
     global $USER;
 
@@ -180,6 +175,7 @@ function local_bookmark_course_list_item($course) {
         'bookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
             'courseid' => $course->id,
             'sesskey' => sesskey(),
+            'redirect' => (new moodle_url('/local/bookmark/index.php', ['userid' => $USER->id]))->out(false),
         ]))->out(false),
         'unbookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
             'courseid' => $course->id,
@@ -192,6 +188,7 @@ function local_bookmark_prepare_course_data($course) {
     global $USER, $DB;
 
     $bookmarked = $DB->record_exists('local_bookmark', ['userid' => $USER->id, 'courseid' => $course->id]);
+    $redirecturl = new moodle_url('/local/bookmark/index.php', ['userid' => $USER->id]);
 
     return [
         'id' => $course->id,
@@ -201,10 +198,12 @@ function local_bookmark_prepare_course_data($course) {
         'bookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
             'courseid' => $course->id,
             'sesskey' => sesskey(),
+            'redirect' => $redirecturl->out(false),
         ]))->out(false),
         'unbookmarkurl' => (new moodle_url('/local/bookmark/bookmark.php', [
             'courseid' => $course->id,
             'sesskey' => sesskey(),
+            'redirect' => $redirecturl->out(false),
         ]))->out(false),
     ];
 }
