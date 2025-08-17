@@ -1,0 +1,105 @@
+<div class="pd-16">
+  <h2>Team Report</h2>
+
+  <!-- 5.2.4 Filters -->
+  <div class="filters">
+    <form method="get" action="">
+      <input type="hidden" name="nav" value="reports">
+      <input type="text" name="search" placeholder="ค้นหาชื่อพนักงาน" value="{{search}}">
+      <select name="status">
+        <option value="">All Status</option>
+        <option value="Completed" {{#status_completed}}selected{{/status_completed}}>Completed</option>
+        <option value="In Progress" {{#status_inprogress}}selected{{/status_inprogress}}>In Progress</option>
+        <option value="Expired" {{#status_expired}}selected{{/status_expired}}>Expired</option>
+      </select>
+      <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+  </div>
+
+  <!-- 5.2.1 Team Summary -->
+  <h2>ข้อมูลรวมของทีม</h2>
+  <ul>
+    <li>จำนวนพนักงานในทีม: {{team_members}}</li>
+    <li>อัตราการเรียนจบเฉลี่ยของทีม: {{avg_completion}}%</li>
+    <li>คะแนนเฉลี่ยรวมของทีม: {{avg_quiz}}%</li>
+    <li>การเข้าใช้งาน: {{active_users}} Active / {{inactive_users}} Inactive</li>
+  </ul>
+
+  <!-- 5.2.2 Individual Reports Table -->
+  <h2>รายงานรายบุคคล</h2>
+  <table border="1" cellpadding="4" class="table table-striped">
+    <thead>
+      <tr>
+        <th>ชื่อ</th>
+        <th>คอร์สทั้งหมด</th>
+        <th>Completed</th>
+        <th>In Progress</th>
+        <th>Avg Quiz</th>
+        <th>Last Access</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#data}}
+      <tr>
+        <td>{{fullname}}</td>
+        <td>{{courses_total}}</td>
+        <td>{{courses_completed}}</td>
+        <td>{{courses_inprogress}}</td>
+        <td>{{average_quiz}}</td>
+        <td>{{lastaccess}}</td>
+        <td>{{status}}</td>
+      </tr>
+      {{/data}}
+    </tbody>
+  </table>
+
+  <!-- 5.2.3 Export -->
+  <h2>ดาวน์โหลดรายงาน</h2>
+  <a href="{{download_pdf_url}}" class="btn btn-primary">ดาวน์โหลด PDF</a>
+  <a href="{{download_excel_url}}" class="btn btn-success">ดาวน์โหลด Excel</a>
+  <br><br>
+
+  <!-- Charts -->
+  <h2>Visualization (กราฟ)</h2>
+  <canvas id="teamCompletionChart" width="400" height="400"></canvas>
+  <canvas id="teamQuizChart" width="600" height="300"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Team completion pie chart
+    const ctxCompletion = document.getElementById('teamCompletionChart').getContext('2d');
+    const completionChart = new Chart(ctxCompletion, {
+        type: 'pie',
+        data: {
+            labels: ['Completed','In Progress','Active Users'],
+            datasets: [{
+                data: [{{avg_completion}}, {{#avg_inprogress}}{{.}}{{/avg_inprogress}}, {{active_users}}],
+                backgroundColor: ['#2a9d8f','#f4a261','#e9c46a']
+            }]
+        },
+    });
+
+    // Individual quiz history line chart
+    const ctxQuiz = document.getElementById('teamQuizChart').getContext('2d');
+    const quizLabels = [{{#data}}"{{fullname}}",{{/data}}];
+    const quizData = [{{#data}}{{average_quiz}},{{/data}}];
+
+    const quizChart = new Chart(ctxQuiz, {
+        type: 'bar',
+        data: {
+            labels: quizLabels,
+            datasets: [{
+                label: 'Average Quiz Score (%)',
+                data: quizData,
+                backgroundColor: '#264653'
+            }]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero: true, max: 100 }
+            }
+        }
+    });
+  </script>
+</div>

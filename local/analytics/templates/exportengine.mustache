@@ -1,0 +1,19 @@
+<div class="pd-16">
+  <h2>Export Engine</h2>
+
+  <form method="get" action="">
+    <input type="hidden" name="nav" value="export_engine">
+
+    <p>เลือกรูปแบบ Export:</p>
+    {{#export_scope}}
+      <label>
+        <input type="radio" name="scope" value="{{key}}" {{#selected}}checked{{/selected}}> {{label}}
+      </label><br>
+    {{/export_scope}}
+
+    <p>ดาวน์โหลดข้อมูล:</p>
+    <button type="submit" name="download" value="csv">CSV</button>
+    <button type="submit" name="download" value="excel">Excel</button>
+    <button type="submit" name="download" value="pdf">PDF</button>
+  </form>
+</div>

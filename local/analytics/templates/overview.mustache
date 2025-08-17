@@ -1,0 +1,78 @@
+<div class="pd-16">
+  <h2>Individual Report / ข้อมูลผู้ใช้งาน</h2>
+
+  <h3>ข้อมูลผู้ใช้งาน</h3>
+  <ul>
+      <li>ชื่อ: {{fullname}}</li>
+      <li>ตําแหน่ง: {{position}}</li>
+      <li>แผนก: {{department}}</li>
+      <li>ทีม: {{team}}</li>
+      <li>วันที่สมัครเข้าใช้งาน: {{firstaccess}}</li>
+  </ul>
+
+  <h3>สถิติการเรียนรู้ของตนเอง</h3>
+  <ul>
+      <li>จํานวนคอร์สที่ลงทะเบียน: {{courses_enrolled}}</li>
+      <li>จํานวนคอร์สที่กําลังเรียน: {{courses_inprogress}}</li>
+      <li>จํานวนคอร์สที่เรียนจบแล้ว: {{courses_completed}}</li>
+      <li>จํานวนคอร์สที่บันทึกไว้: {{courses_saved}}</li>
+      <li>คะแนนเฉลี่ยจากแบบทดสอบทั้งหมด: {{average_quiz}}%</li>
+      <li>ประวัติการเข้าใช้งาน: {{lastaccess}} / {{login_count}} ครั้ง</li>
+  </ul>
+
+  <h3>ดาวน์โหลดรายงาน</h3>
+  <a href="{{download_pdf_url}}" class="btn btn-primary">ดาวน์โหลด PDF</a>
+  <a href="{{download_excel_url}}" class="btn btn-success">ดาวน์โหลด Excel</a>
+  <br><br>
+  <h3>Visualization (กราฟ)</h3>
+  <canvas id="completionChart" width="400" height="400"></canvas>
+  <canvas id="quizHistoryChart" width="600" height="300"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Completion status pie chart
+  const ctxCompletion = document.getElementById('completionChart').getContext('2d');
+  new Chart(ctxCompletion, {
+      type: 'pie',
+      data: {
+          labels: ['Completed', 'In Progress', 'Enrolled'],
+          datasets: [{
+              label: 'Course Status',
+              data: [{{chart_completion.completed}}, {{chart_completion.inprogress}}, {{chart_completion.enrolled}}],
+              backgroundColor: ['#2a9d8f', '#f4a261', '#e9c46a']
+          }]
+      },
+  });
+
+  // Quiz history line chart
+  const ctxQuiz = document.getElementById('quizHistoryChart').getContext('2d');
+  const quizLabels = [
+      {{#quiz_history}}
+      "{{time}}",
+      {{/quiz_history}}
+  ];
+  const quizData = [
+      {{#quiz_history}}
+      {{score}},
+      {{/quiz_history}}
+  ];
+  new Chart(ctxQuiz, {
+      type: 'line',
+      data: {
+          labels: quizLabels,
+          datasets: [{
+              label: 'Quiz Scores (%)',
+              data: quizData,
+              fill: false,
+              borderColor: '#264653',
+              tension: 0.1
+          }]
+      },
+      options: {
+          scales: {
+              y: { beginAtZero: true, max: 100 }
+          }
+      }
+  });
+</script>

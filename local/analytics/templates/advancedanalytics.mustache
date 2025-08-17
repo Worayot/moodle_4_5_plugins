@@ -1,0 +1,31 @@
+<div class="pd-16">
+  <h2>Advanced Analytics</h2>
+
+  <h3>คอร์สที่ได้รับความนิยมสูงสุด</h3>
+  <ul>
+    {{#popular_courses}}
+      <li>{{name}} — ลงทะเบียน {{enrol_count}} คน</li>
+    {{/popular_courses}}
+  </ul>
+
+  <h3>อัตราการเรียนจบแยกตามแผนก / ทีม</h3>
+  <ul>
+    {{#department_completion}}
+      <li>{{name}}: {{completion_rate}}%</li>
+    {{/department_completion}}
+  </ul>
+
+  <h3>รายชื่อพนักงานที่เรียนโดดเด่น</h3>
+  <ul>
+    {{#top_learners}}
+      <li>{{firstname}} {{lastname}} — คะแนนเฉลี่ย {{avg_score}}%</li>
+    {{/top_learners}}
+  </ul>
+
+  <h3>รายชื่อพนักงานที่เรียนล่าช้า</h3>
+  <ul>
+    {{#lagging_learners}}
+      <li>{{firstname}} {{lastname}}</li>
+    {{/lagging_learners}}
+  </ul>
+</div>

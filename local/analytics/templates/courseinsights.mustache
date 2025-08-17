@@ -1,0 +1,29 @@
+<div class="pd-16">
+  <h2>Course Insights</h2>
+
+  <p>คอร์สที่ถูกบันทึกไว้ แต่ยังไม่ได้เริ่มเรียน:</p>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ชื่อคอร์ส</th>
+        <th>จำนวนผู้บันทึก</th>
+        <th>จำนวนผู้เริ่มเรียน</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#saved_not_started_courses}}
+      <tr>
+        <td>{{name}}</td>
+        <td>{{bookmark_count}}</td>
+        <td>{{started_count}}</td>
+      </tr>
+      {{/saved_not_started_courses}}
+      {{^saved_not_started_courses}}
+      <tr>
+        <td colspan="3">ไม่มีข้อมูล</td>
+      </tr>
+      {{/saved_not_started_courses}}
+    </tbody>
+  </table>
+</div>
