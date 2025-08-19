@@ -18,7 +18,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 $PAGE->set_context($context);
 $PAGE->set_title(get_string('pluginname', 'local_analytics'));
 $PAGE->set_heading(get_string('pluginname', 'local_analytics'));
-$PAGE->set_pagelayout('admin');
+$PAGE->set_pagelayout('report');
 $PAGE->requires->css(new moodle_url('/local/analytics/styles.css'));
 
 $nav = optional_param('nav', 'overview', PARAM_ALPHANUMEXT);
@@ -151,22 +151,19 @@ if ($downloadformat === 'pdf' || $downloadformat === 'excel') {
 // Prepare overview content (Individual report)
 // -------------------
 if ($nav === 'overview') {
+    global $USER, $DB, $PAGE, $OUTPUT;
+
     $PAGE->set_title(get_string('individualreport', 'local_analytics'));
     $PAGE->set_heading(get_string('individualreport', 'local_analytics'));
-    // The existing code for individual report is already filtered to the current user, so no changes are needed here.
-    $download_baseurl = new moodle_url('/local/analytics/index.php', ['nav' => 'overview']);
-    $usercontext = [
-        'fullname'   => fullname($USER),
-        'position'   => $USER->profile_field_position ?? '',
-        'department' => $USER->profile_field_department ?? '',
-        'team'       => $USER->profile_field_team ?? '',
-        'firstaccess'=> $USER->firstaccess ? userdate($USER->firstaccess) : get_string('never'),
-        'download_pdf_url'   => $download_baseurl->out(false) . '&download=pdf',
-        'download_excel_url' => $download_baseurl->out(false) . '&download=excel',
-    ];
+
+    // Download param
+    $download = optional_param('download', '', PARAM_ALPHA);
+
+    // Courses and completion
     $enrolledcourses = enrol_get_all_users_courses($USER->id, true);
-    $usercontext['courses_enrolled'] = count($enrolledcourses);
-    $inprogress = 0; $completed = 0;
+    $inprogress = 0;
+    $completed = 0;
+
     foreach ($enrolledcourses as $course) {
         $info = new completion_info($course);
         if ($info->is_enabled() && $info->is_course_complete($USER->id)) {
@@ -175,23 +172,8 @@ if ($nav === 'overview') {
             $inprogress++;
         }
     }
-    $usercontext['courses_inprogress'] = $inprogress;
-    $usercontext['courses_completed'] = $completed;
-    $usercontext['courses_saved'] = count($enrolledcourses);
-    $avggrade = $DB->get_field_sql("
-        SELECT AVG(gg.finalgrade / gi.grademax * 100)
-          FROM {grade_grades} gg
-          JOIN {grade_items} gi ON gi.id = gg.itemid
-         WHERE gi.itemtype = 'mod'
-           AND gi.itemmodule = 'quiz'
-           AND gg.userid = :userid
-    ", ['userid' => $USER->id]);
-    $usercontext['average_quiz'] = $avggrade ? round($avggrade, 2) : 0;
-    $usercontext['chart_completion'] = [
-        'completed'  => $completed,
-        'inprogress' => $inprogress,
-        'enrolled'   => count($enrolledcourses),
-    ];
+
+    // Quiz history safely
     $quizgrades = $DB->get_records_sql("
         SELECT gg.finalgrade / gi.grademax * 100 AS percent,
                gg.timemodified, gi.itemname
@@ -203,22 +185,134 @@ if ($nav === 'overview') {
       ORDER BY gg.timemodified DESC
          LIMIT 10
     ", ['userid' => $USER->id]);
-    $historical_grades = [];
+
+    // ⭐ Starred courses (saved)
+    // Support both 'course' and 'courses' itemtype across Moodle versions.
+    $courses_saved = $DB->count_records_select(
+        'favourite',
+        'userid = :uid AND component = :comp AND (itemtype = :it1 OR itemtype = :it2)',
+        ['uid' => $USER->id, 'comp' => 'core_course', 'it1' => 'course', 'it2' => 'courses']
+    );
+
+    // Prepare user data
+    $usercontext = [
+        'fullname'   => fullname($USER),
+        'position'   => $USER->profile_field_position ?? '',
+        'department' => $USER->profile_field_department ?? '',
+        'team'       => $USER->profile_field_team ?? '',
+        'firstaccess'=> $USER->firstaccess ? userdate($USER->firstaccess) : get_string('never'),
+        'courses_enrolled'   => count($enrolledcourses),
+        'courses_inprogress' => $inprogress,
+        'courses_completed'  => $completed,
+        'courses_saved'      => $courses_saved, // ← fixed
+        'average_quiz'       => round($quizgrades ? array_sum(array_map(fn($q)=>$q->percent, $quizgrades))/count($quizgrades) : 0, 2),
+        'lastaccess'         => $USER->lastaccess ? userdate($USER->lastaccess) : get_string('never'),
+        'login_count'        => $DB->count_records('logstore_standard_log', ['userid' => $USER->id, 'action' => 'loggedin']),
+    ];
+
+    // ===== Prepare download URLs =====
+    $usercontext['download_pdf_url'] = (new moodle_url('/local/analytics/index.php', [
+        'nav' => 'overview',
+        'download' => 'pdf'
+    ]))->out(false);
+
+    $usercontext['download_excel_url'] = (new moodle_url('/local/analytics/index.php', [
+        'nav' => 'overview',
+        'download' => 'excel'
+    ]))->out(false);
+
+    // ===== Prepare chart data =====
+    $usercontext['chart_completion'] = [
+        'completed'  => $completed,
+        'inprogress' => $inprogress,
+        'enrolled'   => count($enrolledcourses),
+    ];
+
+    // ===== Format quiz history for Mustache =====
+    $usercontext['quiz_history'] = [];
     foreach ($quizgrades as $q) {
-        $historical_grades[] = [
-            'course' => $q->itemname,
-            'score'  => round($q->percent, 2),
-            'time'   => userdate($q->timemodified, '%d/%m/%Y')
+        $usercontext['quiz_history'][] = [
+            'time'  => userdate($q->timemodified, '%d/%m/%Y'),
+            'score' => round($q->percent, 2),
+            // include name if you want to show it in PDF/Excel:
+            'itemname' => $q->itemname ?? ''
         ];
     }
-    $usercontext['quiz_history'] = $historical_grades;
-    $usercontext['lastaccess'] = $USER->lastaccess ? userdate($USER->lastaccess) : get_string('never');
-    $usercontext['login_count'] = $DB->count_records('logstore_standard_log', [
-        'userid' => $USER->id,
-        'action' => 'loggedin'
-    ]);
+
+    // ===== Excel Download =====
+    if ($download === 'excel') {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $sheet->setCellValue('A1', 'Fullname');
+        $sheet->setCellValue('B1', $usercontext['fullname']);
+        $sheet->setCellValue('A2', 'Department');
+        $sheet->setCellValue('B2', $usercontext['department']);
+        $sheet->setCellValue('A3', 'Team');
+        $sheet->setCellValue('B3', $usercontext['team']);
+        $sheet->setCellValue('A4', 'Courses Enrolled');
+        $sheet->setCellValue('B4', $usercontext['courses_enrolled']);
+        $sheet->setCellValue('A5', 'Courses In Progress');
+        $sheet->setCellValue('B5', $usercontext['courses_inprogress']);
+        $sheet->setCellValue('A6', 'Courses Completed');
+        $sheet->setCellValue('B6', $usercontext['courses_completed']);
+        $sheet->setCellValue('A7', 'Starred Courses');
+        $sheet->setCellValue('B7', $usercontext['courses_saved']);
+        $sheet->setCellValue('A8', 'Average Quiz Score');
+        $sheet->setCellValue('B8', $usercontext['average_quiz']);
+
+        // Quiz history table
+        $sheet->setCellValue('A10', 'Quiz');
+        $sheet->setCellValue('B10', 'Score (%)');
+        $sheet->setCellValue('C10', 'Date');
+        $row = 11;
+        foreach ($usercontext['quiz_history'] as $q) {
+            $sheet->setCellValue("A$row", $q['itemname'] ?? '');
+            $sheet->setCellValue("B$row", $q['score']);
+            $sheet->setCellValue("C$row", $q['time']);
+            $row++;
+        }
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="individual_report.xlsx"');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    // ===== PDF Download =====
+    if ($download === 'pdf') {
+        $pdf = new \TCPDF();
+        $pdf->AddPage();
+        $pdf->SetFont('helvetica', '', 12);
+
+        $html = "<h2>Individual Report for {$usercontext['fullname']}</h2>";
+        $html .= "<p>Department: {$usercontext['department']}<br>";
+        $html .= "Team: {$usercontext['team']}<br>";
+        $html .= "Courses Enrolled: {$usercontext['courses_enrolled']}<br>";
+        $html .= "Courses In Progress: {$usercontext['courses_inprogress']}<br>";
+        $html .= "Courses Completed: {$usercontext['courses_completed']}<br>";
+        $html .= "Starred Courses: {$usercontext['courses_saved']}<br>";
+        $html .= "Average Quiz Score: {$usercontext['average_quiz']}%</p>";
+
+        if ($usercontext['quiz_history']) {
+            $html .= "<h3>Quiz History</h3><table border='1' cellpadding='4'><tr><th>Quiz</th><th>Score (%)</th><th>Date</th></tr>";
+            foreach ($usercontext['quiz_history'] as $q) {
+                $html .= "<tr><td>".($q['itemname'] ?? '')."</td><td>{$q['score']}</td><td>{$q['time']}</td></tr>";
+            }
+            $html .= "</table>";
+        }
+
+        $pdf->writeHTML($html);
+        $pdf->Output('individual_report.pdf', 'D');
+        exit;
+    }
+
+    // Render (use return, not echo, to keep layout/blocks intact if your controller wraps output)
     $content = $OUTPUT->render_from_template('local_analytics/overview', $usercontext);
-} elseif ($nav === 'reports') {
+    // return $content; // uncomment if your page caller expects a return instead of echoing here.
+}
+ elseif ($nav === 'reports') {
     // "Team report"
     $content = $OUTPUT->render_from_template('local_analytics/reports', []);
 } elseif ($nav === 'organization_report') {

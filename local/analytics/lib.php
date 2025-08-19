@@ -1,26 +1,54 @@
 <?php
 // local/analytics/lib.php
 defined('MOODLE_INTERNAL') || die();
-/**
- * Extends the front page navigation menu.
- */
-function local_analytics_extend_navigation_frontpage($navigation) {
-    global $USER;
+function local_analytics_before_standard_html_head() {
+    global $USER, $PAGE;
+
     if (!isloggedin() || isguestuser()) {
         return;
     }
 
     if (has_capability('local/analytics:view', context_system::instance(), $USER->id)) {
-        // This link is for the global analytics page.
-        $url = new moodle_url('/local/analytics/index.php');
-        $node = navigation_node::create(
-            get_string('pluginname', 'local_analytics'),
-            $url,
-            navigation_node::TYPE_CUSTOM,
-            null,
-            'local_analytics_dashboard',
-            new pix_icon('i/chart', '')
-        );
-        $navigation->add_node($node);
+        $url  = new moodle_url('/local/analytics/index.php');
+        $text = get_string('pluginname', 'local_analytics');
+        
+        $js = "
+            document.addEventListener('DOMContentLoaded', function() {
+                var ul = document.querySelector('.primary-navigation nav ul');
+                if (!ul) return;
+
+                var li = document.createElement('li');
+                li.className = 'nav-item';
+                li.setAttribute('role', 'none');
+                li.setAttribute('data-key', 'local_analytics_dashboard');
+                li.setAttribute('data-forceintomoremenu', 'false');
+
+                var a = document.createElement('a');
+                a.className = 'nav-link';
+                a.setAttribute('role', 'menuitem');
+                a.href = " . json_encode($url->out(false)) . ";
+                a.textContent = " . json_encode($text) . ";
+                a.setAttribute('data-disableactive', 'true');
+
+                if (window.location.pathname.indexOf('/local/analytics/index.php') !== -1) {
+                    document.querySelectorAll('.primary-navigation .nav-link.active')
+                        .forEach(function(link) { link.classList.remove('active'); });
+                    a.classList.add('active');
+                }
+
+                li.appendChild(a);
+
+                // Insert right after Home
+                var homeItem = ul.querySelector('[data-key=\"home\"]');
+                if (homeItem && homeItem.nextSibling) {
+                    homeItem.after(li);
+                } else {
+                    ul.appendChild(li);
+                }
+            });
+        ";
+
+       
+        $PAGE->requires->js_init_code($js);
     }
 }

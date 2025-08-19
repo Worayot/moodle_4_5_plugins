@@ -21,12 +21,17 @@
   </ul>
 
   <h3>ดาวน์โหลดรายงาน</h3>
-  <a href="{{download_pdf_url}}" class="btn btn-primary">ดาวน์โหลด PDF</a>
-  <a href="{{download_excel_url}}" class="btn btn-success">ดาวน์โหลด Excel</a>
+  <a href="{{download_pdf_url}}" class="btn btn-primary">Download PDF</a>
+  <a href="{{download_excel_url}}" class="btn btn-secondary">Download Excel</a>
   <br><br>
   <h3>Visualization (กราฟ)</h3>
-  <canvas id="completionChart" width="400" height="400"></canvas>
-  <canvas id="quizHistoryChart" width="600" height="300"></canvas>
+  <div style="max-width:400px;">
+  <canvas id="completionChart"></canvas>
+</div>
+<div style="max-width:600px;">
+  <canvas id="quizHistoryChart"></canvas>
+</div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
