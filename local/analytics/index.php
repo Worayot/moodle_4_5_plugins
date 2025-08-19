@@ -9,9 +9,9 @@ require_capability('local/analytics:view', $context);
 // Include necessary libraries
 require_once($CFG->dirroot . '/user/lib.php');
 require_once($CFG->dirroot . '/course/lib.php');
-require_once($CFG->dirroot . '/grade/lib.php');
-require_once($CFG->libdir . '/tcpdf/tcpdf.php'); // PDF
-require_once($CFG->dirroot . '/lib/phpspreadsheet/vendor/autoload.php'); // Excel
+require_once($CFG->libdir . '/completionlib.php');
+require_once($CFG->libdir . '/tcpdf/tcpdf.php');
+require_once($CFG->dirroot . '/lib/phpspreadsheet/vendor/autoload.php');
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -29,18 +29,8 @@ $navitems = [
     ['key' => 'reports',  'icon' => '📈', 'label' => get_string('teamreport', 'local_analytics'),  'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'reports'])],
     ['key' => 'organization_report', 'icon' => '🏢', 'label' => get_string('organizationreport', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'organization_report'])],
     ['key' => 'advanced_analytics', 'icon' => '🧠', 'label' => get_string('advancedanalytics', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'advanced_analytics'])],
-    [
-        'key'   => 'export_engine',
-        'icon'  => '💾',
-        'label' => get_string('exportengine', 'local_analytics'),
-        'url'   => new moodle_url('/local/analytics/index.php', ['nav' => 'export_engine'])
-    ],
-    [
-        'key'   => 'course_insights',
-        'icon'  => '💡',
-        'label' => get_string('courseinsights', 'local_analytics'),
-        'url'   => new moodle_url('/local/analytics/index.php', ['nav' => 'course_insights'])
-    ]
+    ['key' => 'export_engine', 'icon' => '💾', 'label' => get_string('exportengine', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'export_engine'])],
+    ['key' => 'course_insights', 'icon' => '💡', 'label' => get_string('courseinsights', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'course_insights'])]
 ];
 
 foreach ($navitems as &$item) {
@@ -49,207 +39,100 @@ foreach ($navitems as &$item) {
 
 global $USER, $DB;
 
-// Determine user role for access control
-$is_admin = has_capability('moodle/site:config', context_system::instance(), $USER->id);
-$is_manager = has_capability('moodle/course:managestats', context_system::instance(), $USER->id); // Using a common manager capability
+// =========================================================================
+// ✅ Step 1: Prepare all individual user data first.
+// This is a single source of truth for both the page and the downloads.
+// =========================================================================
+$enrolledcourses = enrol_get_all_users_courses($USER->id, true);
+$courses_inprogress = 0;
+$courses_completed = 0;
 
-// Get the user's department for filtering
-$user_department = $USER->profile_field_department ?? null;
-
-// Build SQL conditions and parameters for filtering
-$user_conditions = ['u.deleted = 0'];
-$user_params = [];
-$course_conditions = [];
-
-if (!$is_admin) {
-    // Managers and regular users can only see their own department's data
-    if ($user_department) {
-        $user_conditions[] = 'u.profile_field_department = :department';
-        $user_params['department'] = $user_department;
+foreach ($enrolledcourses as $course) {
+    $info = new completion_info($course);
+    if ($info->is_enabled() && $info->is_course_complete($USER->id)) {
+        $courses_completed++;
     } else {
-        // If no department, they can only see their own data
-        $user_conditions[] = 'u.id = :userid';
-        $user_params['userid'] = $USER->id;
+        $courses_inprogress++;
     }
 }
-$user_where = implode(' AND ', $user_conditions);
 
-// -------------------
-// Handle download first
-// -------------------
-if ($downloadformat === 'pdf' || $downloadformat === 'excel') {
-    // Data filtering for downloads
-    $users_for_report = [];
-    if ($is_admin) {
-        $users_for_report = $DB->get_records_sql("SELECT id, fullname, profile_field_department, lastaccess FROM {user} WHERE $user_where", $user_params);
-    } else if ($is_manager) {
-        $users_for_report = $DB->get_records_sql("SELECT id, fullname, profile_field_department, lastaccess FROM {user} WHERE $user_where", $user_params);
-    } else {
-        $users_for_report = [$USER];
-    }
-    
-    $data = [];
-    foreach ($users_for_report as $user_in_report) {
-        $courses = enrol_get_all_users_courses($user_in_report->id, true);
-        foreach ($courses as $course) {
-            $info = new completion_info($course);
-            $status = ($info->is_enabled() && $info->is_course_complete($user_in_report->id)) ? 'Completed' : 'In Progress';
-            $avg = $DB->get_field_sql("
-                SELECT AVG(gg.finalgrade / gi.grademax * 100)
-                  FROM {grade_grades} gg
-                  JOIN {grade_items} gi ON gi.id = gg.itemid
-                 WHERE gi.itemtype = 'mod'
-                   AND gi.itemmodule = 'quiz'
-                   AND gi.courseid = :courseid
-                   AND gg.userid = :userid
-            ", ['courseid' => $course->id, 'userid' => $user_in_report->id]);
-            $data[] = [
-                'Fullname' => fullname($user_in_report),
-                'Department' => $user_in_report->profile_field_department ?? 'N/A',
-                'Course' => $course->fullname,
-                'Status' => $status,
-                'Avg Quiz' => $avg ? round($avg, 2) : 0,
-                'Last Access' => $course->timemodified ? userdate($course->timemodified) : get_string('never'),
-            ];
-        }
-    }
+$quizgrades = $DB->get_records_sql("
+    SELECT gg.finalgrade / gi.grademax * 100 AS percent,
+           gg.timemodified, gi.itemname
+      FROM {grade_grades} gg
+      JOIN {grade_items} gi ON gi.id = gg.itemid
+     WHERE gi.itemtype = 'mod'
+       AND gi.itemmodule = 'quiz'
+       AND gg.userid = :userid
+  ORDER BY gg.timemodified DESC
+     LIMIT 10
+", ['userid' => $USER->id]);
 
+$courses_saved = $DB->count_records_select(
+    'favourite',
+    'userid = :uid AND component = :comp AND (itemtype = :it1 OR itemtype = :it2)',
+    ['uid' => $USER->id, 'comp' => 'core_course', 'it1' => 'course', 'it2' => 'courses']
+);
+
+$usercontext = [
+    'fullname'           => fullname($USER),
+    'position'           => $USER->profile_field_position ?? '',
+    'department'         => $USER->profile_field_department ?? '',
+    'team'               => $USER->profile_field_team ?? '',
+    'firstaccess'        => $USER->firstaccess ? userdate($USER->firstaccess) : get_string('never'),
+    'courses_enrolled'   => count($enrolledcourses),
+    'courses_inprogress' => $courses_inprogress,
+    'courses_completed'  => $courses_completed,
+    'courses_saved'      => $courses_saved,
+    'average_quiz'       => round($quizgrades ? array_sum(array_map(fn($q)=>$q->percent, $quizgrades))/count($quizgrades) : 0, 2),
+    'lastaccess'         => $USER->lastaccess ? userdate($USER->lastaccess) : get_string('never'),
+    'login_count'        => $DB->count_records('logstore_standard_log', ['userid' => $USER->id, 'action' => 'loggedin']),
+];
+
+// Prepare download URLs
+$usercontext['download_pdf_url'] = (new moodle_url('/local/analytics/index.php', [
+    'nav' => 'overview',
+    'download' => 'pdf'
+]))->out(false);
+$usercontext['download_excel_url'] = (new moodle_url('/local/analytics/index.php', [
+    'nav' => 'overview',
+    'download' => 'excel'
+]))->out(false);
+
+// Prepare chart data
+$usercontext['chart_completion'] = [
+    'completed'  => $courses_completed,
+    'inprogress' => $courses_inprogress,
+    'enrolled'   => count($enrolledcourses),
+];
+
+// Format quiz history for Mustache
+$usercontext['quiz_history'] = [];
+foreach ($quizgrades as $q) {
+    $usercontext['quiz_history'][] = [
+        'time'  => userdate($q->timemodified, '%d/%m/%Y'),
+        'score' => round($q->percent, 2),
+        'itemname' => $q->itemname ?? ''
+    ];
+}
+
+// =========================================================================
+// ✅ Step 2: Handle Download requests. This must be done *before* rendering.
+// =========================================================================
+if ($nav === 'overview' && $downloadformat) {
+    // Check for the specific download format
     if ($downloadformat === 'excel') {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        if (!empty($data)) {
-            $sheet->fromArray(array_keys($data[0]), NULL, 'A1');
-            $row = 2;
-            foreach ($data as $d) {
-                $sheet->fromArray(array_values($d), NULL, "A$row");
-                $row++;
-            }
-        }
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="report.xlsx"');
-        $writer = new Xlsx($spreadsheet);
-        $writer->save('php://output');
-        exit;
-    } else {
-        $pdf = new TCPDF();
-        $pdf->AddPage();
-        $html = '<h1>รายงานคอร์ส</h1><table border="1" cellpadding="4">
-                 <tr><th>Fullname</th><th>Department</th><th>Course</th><th>Status</th><th>Avg Quiz</th><th>Last Access</th></tr>';
-        if (!empty($data)) {
-            foreach ($data as $d) {
-                $html .= "<tr><td>{$d['Fullname']}</td><td>{$d['Department']}</td><td>{$d['Course']}</td><td>{$d['Status']}</td><td>{$d['Avg Quiz']}</td><td>{$d['Last Access']}</td></tr>";
-            }
-        }
-        $html .= '</table>';
-        $pdf->writeHTML($html);
-        $pdf->Output('report.pdf', 'D');
-        exit;
-    }
-}
-
-// -------------------
-// Prepare overview content (Individual report)
-// -------------------
-if ($nav === 'overview') {
-    global $USER, $DB, $PAGE, $OUTPUT;
-
-    $PAGE->set_title(get_string('individualreport', 'local_analytics'));
-    $PAGE->set_heading(get_string('individualreport', 'local_analytics'));
-
-    // Download param
-    $download = optional_param('download', '', PARAM_ALPHA);
-
-    // Courses and completion
-    $enrolledcourses = enrol_get_all_users_courses($USER->id, true);
-    $inprogress = 0;
-    $completed = 0;
-
-    foreach ($enrolledcourses as $course) {
-        $info = new completion_info($course);
-        if ($info->is_enabled() && $info->is_course_complete($USER->id)) {
-            $completed++;
-        } else {
-            $inprogress++;
-        }
-    }
-
-    // Quiz history safely
-    $quizgrades = $DB->get_records_sql("
-        SELECT gg.finalgrade / gi.grademax * 100 AS percent,
-               gg.timemodified, gi.itemname
-          FROM {grade_grades} gg
-          JOIN {grade_items} gi ON gi.id = gg.itemid
-         WHERE gi.itemtype = 'mod'
-           AND gi.itemmodule = 'quiz'
-           AND gg.userid = :userid
-      ORDER BY gg.timemodified DESC
-         LIMIT 10
-    ", ['userid' => $USER->id]);
-
-    // ⭐ Starred courses (saved)
-    // Support both 'course' and 'courses' itemtype across Moodle versions.
-    $courses_saved = $DB->count_records_select(
-        'favourite',
-        'userid = :uid AND component = :comp AND (itemtype = :it1 OR itemtype = :it2)',
-        ['uid' => $USER->id, 'comp' => 'core_course', 'it1' => 'course', 'it2' => 'courses']
-    );
-
-    // Prepare user data
-    $usercontext = [
-        'fullname'   => fullname($USER),
-        'position'   => $USER->profile_field_position ?? '',
-        'department' => $USER->profile_field_department ?? '',
-        'team'       => $USER->profile_field_team ?? '',
-        'firstaccess'=> $USER->firstaccess ? userdate($USER->firstaccess) : get_string('never'),
-        'courses_enrolled'   => count($enrolledcourses),
-        'courses_inprogress' => $inprogress,
-        'courses_completed'  => $completed,
-        'courses_saved'      => $courses_saved, // ← fixed
-        'average_quiz'       => round($quizgrades ? array_sum(array_map(fn($q)=>$q->percent, $quizgrades))/count($quizgrades) : 0, 2),
-        'lastaccess'         => $USER->lastaccess ? userdate($USER->lastaccess) : get_string('never'),
-        'login_count'        => $DB->count_records('logstore_standard_log', ['userid' => $USER->id, 'action' => 'loggedin']),
-    ];
-
-    // ===== Prepare download URLs =====
-    $usercontext['download_pdf_url'] = (new moodle_url('/local/analytics/index.php', [
-        'nav' => 'overview',
-        'download' => 'pdf'
-    ]))->out(false);
-
-    $usercontext['download_excel_url'] = (new moodle_url('/local/analytics/index.php', [
-        'nav' => 'overview',
-        'download' => 'excel'
-    ]))->out(false);
-
-    // ===== Prepare chart data =====
-    $usercontext['chart_completion'] = [
-        'completed'  => $completed,
-        'inprogress' => $inprogress,
-        'enrolled'   => count($enrolledcourses),
-    ];
-
-    // ===== Format quiz history for Mustache =====
-    $usercontext['quiz_history'] = [];
-    foreach ($quizgrades as $q) {
-        $usercontext['quiz_history'][] = [
-            'time'  => userdate($q->timemodified, '%d/%m/%Y'),
-            'score' => round($q->percent, 2),
-            // include name if you want to show it in PDF/Excel:
-            'itemname' => $q->itemname ?? ''
-        ];
-    }
-
-    // ===== Excel Download =====
-    if ($download === 'excel') {
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-
+        
+        // Populate the sheet with the data we already fetched
         $sheet->setCellValue('A1', 'Fullname');
         $sheet->setCellValue('B1', $usercontext['fullname']);
         $sheet->setCellValue('A2', 'Department');
         $sheet->setCellValue('B2', $usercontext['department']);
         $sheet->setCellValue('A3', 'Team');
         $sheet->setCellValue('B3', $usercontext['team']);
+        // ... add all other fields as needed
         $sheet->setCellValue('A4', 'Courses Enrolled');
         $sheet->setCellValue('B4', $usercontext['courses_enrolled']);
         $sheet->setCellValue('A5', 'Courses In Progress');
@@ -272,20 +155,18 @@ if ($nav === 'overview') {
             $sheet->setCellValue("C$row", $q['time']);
             $row++;
         }
-
+        
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment; filename="individual_report.xlsx"');
-        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new Xlsx($spreadsheet);
         $writer->save('php://output');
         exit;
-    }
-
-    // ===== PDF Download =====
-    if ($download === 'pdf') {
-        $pdf = new \TCPDF();
+    } else if ($downloadformat === 'pdf') {
+        $pdf = new TCPDF();
         $pdf->AddPage();
         $pdf->SetFont('helvetica', '', 12);
 
+        // Populate PDF with data we already fetched
         $html = "<h2>Individual Report for {$usercontext['fullname']}</h2>";
         $html .= "<p>Department: {$usercontext['department']}<br>";
         $html .= "Team: {$usercontext['team']}<br>";
@@ -302,15 +183,19 @@ if ($nav === 'overview') {
             }
             $html .= "</table>";
         }
-
+        
         $pdf->writeHTML($html);
         $pdf->Output('individual_report.pdf', 'D');
         exit;
     }
+}
 
-    // Render (use return, not echo, to keep layout/blocks intact if your controller wraps output)
+// =========================================================================
+// ✅ Step 3: Render the page if it's not a download request.
+// =========================================================================
+if ($nav === 'overview') {
+    // The data is already prepared from Step 1
     $content = $OUTPUT->render_from_template('local_analytics/overview', $usercontext);
-    // return $content; // uncomment if your page caller expects a return instead of echoing here.
 }
  elseif ($nav === 'reports') {
     // "Team report"
