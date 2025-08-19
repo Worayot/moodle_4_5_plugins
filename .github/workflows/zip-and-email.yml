@@ -1,17 +1,15 @@
 name: Zip and Email Folders
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
-      
-main
-pull_request:
-  branches:
-main
+      - production
 
 jobs:
   zip-and-send:
-    if: github.repository == 'Worayot/production' 
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'master' && github.repository == 'your-username/production'
     runs-on: ubuntu-latest
 
     steps:
@@ -20,8 +18,11 @@ name: Checkout repository
     uses: actions/checkout@v3
 
     
-name: Print repository name
-    run: echo "This repository is ${{ github.repository }}"
+name: Print PR info
+    run: |
+      echo "Base branch: ${{ github.event.pull_request.base.ref }}"
+      echo "Source branch: ${{ github.event.pull_request.head.ref }}"
+      echo "Merged: ${{ github.event.pull_request.merged }}"
 
     
 name: Zip each folder
