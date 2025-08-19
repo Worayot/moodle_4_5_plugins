@@ -1,0 +1,1 @@
+put this inside of moodle/blocks folder
