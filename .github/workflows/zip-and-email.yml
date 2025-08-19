@@ -9,7 +9,7 @@ on:
 
 jobs:
   zip-and-send:
-    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'master' && github.repository == 'Worayot/production'
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'master' && github.repository == 'Worayot/moodle_4_5_plugins'
     runs-on: ubuntu-latest
 
     steps:
