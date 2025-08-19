@@ -1,0 +1,72 @@
+name: Zip and Email Folders
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - production
+
+jobs:
+  zip-and-send:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'master' && github.repository == 'your-username/production'
+    runs-on: ubuntu-latest
+
+    steps:
+    
+name: Checkout repository
+    uses: actions/checkout@v3
+
+    
+name: Print PR info
+    run: |
+      echo "Base branch: ${{ github.event.pull_request.base.ref }}"
+      echo "Source branch: ${{ github.event.pull_request.head.ref }}"
+      echo "Merged: ${{ github.event.pull_request.merged }}"
+
+    
+name: Zip each folder
+    run: |
+      mkdir zipped_folders
+      for d in */ ; do
+        folder_name=$(basename "$d")
+        zip -r "zipped_folders/${folder_name}.zip" "$d"
+      done
+
+    
+name: Install Python dependencies
+    run: pip install secure-smtplib
+
+    
+name: Send Email
+    env:
+      EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+      EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+    run: |
+      python3 <<EOF
+      import os
+      import smtplib
+      from email.message import EmailMessage
+
+        sender = os.environ['EMAIL_SENDER']
+        password = os.environ['EMAIL_PASSWORD']
+        receiver = os.environ['EMAIL_RECEIVER']
+
+        msg = EmailMessage()
+        msg['Subject'] = 'Zipped folders from GitHub Action'
+        msg['From'] = sender
+        msg['To'] = receiver
+        msg.set_content('Attached are the zipped folders.')
+
+        folder = 'zipped_folders'
+        for filename in os.listdir(folder):
+            filepath = os.path.join(folder, filename)
+            with open(filepath, 'rb') as f:
+                data = f.read()
+                msg.add_attachment(data, maintype='application', subtype='zip', filename=filename)
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(sender, password)
+            smtp.send_message(msg)
+        EOF
