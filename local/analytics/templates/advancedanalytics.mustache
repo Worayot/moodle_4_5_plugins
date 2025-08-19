@@ -1,31 +1,62 @@
 <div class="pd-16">
   <h2>Advanced Analytics</h2>
 
-  <h3>คอร์สที่ได้รับความนิยมสูงสุด</h3>
-  <ul>
-    {{#popular_courses}}
-      <li>{{name}} — ลงทะเบียน {{enrol_count}} คน</li>
-    {{/popular_courses}}
-  </ul>
+  <div class="analytics-summary">
+    <div class="analytics-section">
+      <h3>คอร์สที่ได้รับความนิยมสูงสุด</h3>
+      <ul>
+        {{#popular_courses}}
+          <li class="analytics-list-item">
+            <span>{{name}}</span>
+            <span>ลงทะเบียน {{enrol_count}} คน</span>
+          </li>
+        {{/popular_courses}}
+        {{^popular_courses}}
+          <li class="analytics-list-item">No data available</li>
+        {{/popular_courses}}
+      </ul>
+    </div>
 
-  <h3>อัตราการเรียนจบแยกตามแผนก / ทีม</h3>
-  <ul>
-    {{#department_completion}}
-      <li>{{name}}: {{completion_rate}}%</li>
-    {{/department_completion}}
-  </ul>
+    <div class="analytics-section">
+      <h3>อัตราการเรียนจบแยกตามแผนก / ทีม</h3>
+      <ul>
+        {{#department_completion}}
+          <li class="analytics-list-item">
+            <span>{{name}}:</span>
+            <span>{{completion_rate}}%</span>
+          </li>
+        {{/department_completion}}
+        {{^department_completion}}
+          <li class="analytics-list-item">No data available</li>
+        {{/department_completion}}
+      </ul>
+    </div>
+  </div>
 
-  <h3>รายชื่อพนักงานที่เรียนโดดเด่น</h3>
-  <ul>
-    {{#top_learners}}
-      <li>{{firstname}} {{lastname}} — คะแนนเฉลี่ย {{avg_score}}%</li>
-    {{/top_learners}}
-  </ul>
+  <div class="analytics-section">
+    <h3>รายชื่อพนักงานที่เรียนโดดเด่น</h3>
+    <ul>
+      {{#top_learners}}
+        <li class="analytics-list-item">
+          <span>{{firstname}} {{lastname}}</span>
+          <span>คะแนนเฉลี่ย {{avg_score}}%</span>
+        </li>
+      {{/top_learners}}
+      {{^top_learners}}
+        <li class="analytics-list-item">No data available</li>
+      {{/top_learners}}
+    </ul>
+  </div>
 
-  <h3>รายชื่อพนักงานที่เรียนล่าช้า</h3>
-  <ul>
-    {{#lagging_learners}}
-      <li>{{firstname}} {{lastname}}</li>
-    {{/lagging_learners}}
-  </ul>
+  <div class="analytics-section">
+    <h3>รายชื่อพนักงานที่เรียนล่าช้า</h3>
+    <ul>
+      {{#lagging_learners}}
+        <li class="analytics-list-item">{{firstname}} {{lastname}}</li>
+      {{/lagging_learners}}
+      {{^lagging_learners}}
+        <li class="analytics-list-item">No data available</li>
+      {{/lagging_learners}}
+    </ul>
+  </div>
 </div>

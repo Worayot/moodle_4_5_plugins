@@ -1,159 +1,220 @@
 <div class="pd-16">
   <h2>Organization Report</h2>
-  <div class="summary">
-    <p>จำนวนผู้ใช้งานทั้งหมด: {{total_users}}</p>
-    <p>สถานะการเรียนรู้ของผู้ใช้งาน: Completed: {{status.completed}}, In Progress: {{status.inprogress}}, Not Started: {{status.notstarted}}</p>
-    <p>คะแนนเฉลี่ยตามแผนก/ทีม:</p>
-    <ul>
+
+  <div class="analytics-section">
+    <h3>ภาพรวมองค์กร</h3>
+    <div class="analytics-summary">
+      <div class="summary-item">
+        <span class="summary-label">จำนวนผู้ใช้งานทั้งหมด:</span>
+        <span class="summary-value">{{total_users}}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">สถานะการเรียนรู้:</span>
+        <span class="summary-value">
+          Completed: {{status.completed}}<br>
+          In Progress: {{status.inprogress}}<br>
+          Not Started: {{status.notstarted}}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="analytics-section">
+    <h3>คะแนนเฉลี่ยตามแผนก/ทีม</h3>
+    <ul class="analytics-list-section">
       {{#departments}}
-        <li>{{name}}: {{average_score}}%</li>
+      <li class="analytics-list-item">
+        <span class="analytics-list-label">{{name}}:</span>
+        <span>{{average_score}}%</span>
+      </li>
       {{/departments}}
       {{^departments}}
-        <li>No departments data</li>
+      <li class="analytics-list-item">No departments data</li>
       {{/departments}}
     </ul>
+  </div>
 
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>ชื่อพนักงาน</th>
-          <th>คอร์ส</th>
-          <th>สถานะการเรียนรู้</th>
-          <th>คะแนนเฉลี่ย</th>
-          <th>วันเข้าครั้งล่าสุด</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{#team_members}}
-        <tr>
-          <td>{{fullname}}</td>
-          <td>
-            {{#courses}}
+  <div class="analytics-section">
+    <h3>รายงานรายบุคคลในองค์กร</h3>
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>ชื่อพนักงาน</th>
+            <th>คอร์ส</th>
+            <th>สถานะการเรียนรู้</th>
+            <th>คะแนนเฉลี่ย</th>
+            <th>วันเข้าครั้งล่าสุด</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#team_members}}
+          <tr>
+            <td>{{fullname}}</td>
+            <td>
+              {{#courses}}
               {{name}}<br>
-            {{/courses}}
-            {{^courses}}
+              {{/courses}}
+              {{^courses}}
               No data
-            {{/courses}}
-          </td>
-          <td>
-            {{#courses}}
+              {{/courses}}
+            </td>
+            <td>
+              {{#courses}}
               {{status}}<br>
-            {{/courses}}
-            {{^courses}}
+              {{/courses}}
+              {{^courses}}
               No data
-            {{/courses}}
-          </td>
-          <td>
-            {{#courses}}
+              {{/courses}}
+            </td>
+            <td>
+              {{#courses}}
               {{average_quiz}}%<br>
-            {{/courses}}
-            {{^courses}}
+              {{/courses}}
+              {{^courses}}
               No data
-            {{/courses}}
-          </td>
-          <td>
-            {{#courses}}
+              {{/courses}}
+            </td>
+            <td>
+              {{#courses}}
               {{lastaccess}}<br>
-            {{/courses}}
-            {{^courses}}
+              {{/courses}}
+              {{^courses}}
               No data
-            {{/courses}}
-          </td>
-        </tr>
-        {{/team_members}}
-        {{^team_members}}
-        <tr>
-          <td colspan="5">No team members data</td>
-        </tr>
-        {{/team_members}}
-      </tbody>
-    </table>
+              {{/courses}}
+            </td>
+          </tr>
+          {{/team_members}}
+          {{^team_members}}
+          <tr>
+            <td colspan="5">No team members data</td>
+          </tr>
+          {{/team_members}}
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <h3>Visualization</h3>
-  <div class="charts-container">
-    <canvas id="platformAccessChart" width="600" height="300"></canvas>
-    <canvas id="departmentCompletionChart" width="600" height="300"></canvas>
-    <canvas id="popularCoursesChart" width="600" height="300"></canvas>
-    <canvas id="resumeCoursesChart" width="600" height="300"></canvas>
-    <canvas id="courseStatusChart" width="600" height="300"></canvas>
-    <canvas id="bookmarkedRarelyStartedChart" width="600" height="300"></canvas>
+  <div class="analytics-section">
+    <h3>Visualization (กราฟ)</h3>
+    <div class="charts-container">
+      <div class="analytics-chart-box">
+        <canvas id="platformAccessChart"></canvas>
+      </div>
+      <div class="analytics-chart-box">
+        <canvas id="departmentCompletionChart"></canvas>
+      </div>
+      <div class="analytics-chart-box">
+        <canvas id="popularCoursesChart"></canvas>
+      </div>
+      <div class="analytics-chart-box">
+        <canvas id="resumeCoursesChart"></canvas>
+      </div>
+      <div class="analytics-chart-box">
+        <canvas id="courseStatusChart"></canvas>
+      </div>
+      <div class="analytics-chart-box">
+        <canvas id="bookmarkedRarelyStartedChart"></canvas>
+      </div>
+    </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  // Utility for safe arrays
-  function safeData(array, defaultLabel='No data') {
-    return array && array.length ? array : [defaultLabel];
-  }
-  function safeValues(array) {
-    return array && array.length ? array : [0];
-  }
-
-  // Platform access chart
-  const ctxAccess = document.getElementById('platformAccessChart').getContext('2d');
-  const platformAccessChart = new Chart(ctxAccess, {
-    type: 'line',
-    data: {
-      labels: safeData([{{#access_data}}"{{date}}",{{/access_data}}]),
-      datasets: [{ label: 'Daily Access', data: safeValues([{{#access_data}}{{count}},{{/access_data}}]), borderColor: '#2a9d8f', fill: false }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
-
-  // Department completion pie chart
-  const ctxDept = document.getElementById('departmentCompletionChart').getContext('2d');
-  const departmentCompletionChart = new Chart(ctxDept, {
-    type: 'pie',
-    data: {
-      labels: safeData([{{#departments}}"{{name}}",{{/departments}}]),
-      datasets: [{
-        data: safeValues([{{#departments}}{{completion_rate}},{{/departments}}]),
-        backgroundColor: ['#2a9d8f', '#f4a261', '#e76f51', '#264653', '#f94144']
-      }]
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Utility for safe chart data
+    function safeChartData(data, labels, defaultLabel = 'No data available') {
+      const hasData = data && data.some(val => val > 0);
+      if (!hasData) {
+        return { labels: [defaultLabel], data: [1] };
+      }
+      return { labels: labels, data: data };
     }
-  });
 
-  // Popular courses
-  const ctxPopular = document.getElementById('popularCoursesChart').getContext('2d');
-  const popularCoursesChart = new Chart(ctxPopular, {
-    type: 'bar',
-    data: {
-      labels: safeData([{{#popular_courses}}"{{name}}",{{/popular_courses}}]),
-      datasets: [{ label: 'Bookmarks Count', data: safeValues([{{#popular_courses}}{{count}},{{/popular_courses}}]), backgroundColor: '#2a9d8f' }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
+    // Platform access chart
+    const accessData = [{{#access_data}}{{count}},{{/access_data}}];
+    const accessLabels = [{{#access_data}}"{{date}}",{{/access_data}}];
+    const { labels: accessChartLabels, data: accessChartData } = safeChartData(accessData, accessLabels, 'No access data');
+    const ctxAccess = document.getElementById('platformAccessChart').getContext('2d');
+    new Chart(ctxAccess, {
+      type: 'line',
+      data: {
+        labels: accessChartLabels,
+        datasets: [{ label: 'Daily Access', data: accessChartData, borderColor: '#2a9d8f', fill: false }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+    });
 
-  // Courses with most resumes
-  const ctxResume = document.getElementById('resumeCoursesChart').getContext('2d');
-  const resumeCoursesChart = new Chart(ctxResume, {
-    type: 'bar',
-    data: {
-      labels: safeData([{{#resume_courses}}"{{name}}",{{/resume_courses}}]),
-      datasets: [{ label: 'Resume Count', data: safeValues([{{#resume_courses}}{{count}},{{/resume_courses}}]), backgroundColor: '#f4a261' }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
+    // Department completion pie chart
+    const deptCompletionData = [{{#departments}}{{completion_rate}},{{/departments}}];
+    const deptCompletionLabels = [{{#departments}}"{{name}}",{{/departments}}];
+    const { labels: deptLabels, data: deptData } = safeChartData(deptCompletionData, deptCompletionLabels, 'No department data');
+    const ctxDept = document.getElementById('departmentCompletionChart').getContext('2d');
+    new Chart(ctxDept, {
+      type: 'pie',
+      data: {
+        labels: deptLabels,
+        datasets: [{
+          data: deptData,
+          backgroundColor: ['#2a9d8f', '#f4a261', '#e76f51', '#264653', '#f94144']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
 
-  // Course status
-  const ctxCourseStatus = document.getElementById('courseStatusChart').getContext('2d');
-  const courseStatusChart = new Chart(ctxCourseStatus, {
-    type: 'pie',
-    data: {
-      labels: ['In Progress', 'Completed', 'Expired'],
-      datasets: [{ data: safeValues([{{inprogress_count}}, {{completed_count}}, {{expired_count}}]), backgroundColor: ['#f4a261', '#2a9d8f', '#e76f51'] }]
-    }
-  });
+    // Popular courses
+    const popularData = [{{#popular_courses}}{{count}},{{/popular_courses}}];
+    const popularLabels = [{{#popular_courses}}"{{name}}",{{/popular_courses}}];
+    const { labels: popularChartLabels, data: popularChartData } = safeChartData(popularData, popularLabels, 'No popular courses data');
+    const ctxPopular = document.getElementById('popularCoursesChart').getContext('2d');
+    new Chart(ctxPopular, {
+      type: 'bar',
+      data: {
+        labels: popularChartLabels,
+        datasets: [{ label: 'Bookmarks Count', data: popularChartData, backgroundColor: '#2a9d8f' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+    });
 
-  // Rarely started & bookmarked courses
-  const ctxRareStart = document.getElementById('bookmarkedRarelyStartedChart').getContext('2d');
-  const bookmarkedRarelyStartedChart = new Chart(ctxRareStart, {
-    type: 'bar',
-    data: {
-      labels: safeData([{{#rarely_started_courses}}"{{name}}",{{/rarely_started_courses}}]),
-      datasets: [{ label: 'Bookmark / Start Ratio', data: safeValues([{{#rarely_started_courses}}{{ratio}},{{/rarely_started_courses}}]), backgroundColor: '#f94144' }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
-</script>
+    // Courses with most resumes
+    const resumeData = [{{#resume_courses}}{{count}},{{/resume_courses}}];
+    const resumeLabels = [{{#resume_courses}}"{{name}}",{{/resume_courses}}];
+    const { labels: resumeChartLabels, data: resumeChartData } = safeChartData(resumeData, resumeLabels, 'No resume courses data');
+    const ctxResume = document.getElementById('resumeCoursesChart').getContext('2d');
+    new Chart(ctxResume, {
+      type: 'bar',
+      data: {
+        labels: resumeChartLabels,
+        datasets: [{ label: 'Resume Count', data: resumeChartData, backgroundColor: '#f4a261' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Course status
+    const courseStatusData = [{{inprogress_count}}, {{completed_count}}, {{expired_count}}];
+    const courseStatusLabels = ['In Progress', 'Completed', 'Expired'];
+    const { labels: courseStatusChartLabels, data: courseStatusChartData } = safeChartData(courseStatusData, courseStatusLabels, 'No status data');
+    const ctxCourseStatus = document.getElementById('courseStatusChart').getContext('2d');
+    new Chart(ctxCourseStatus, {
+      type: 'pie',
+      data: {
+        labels: courseStatusChartLabels,
+        datasets: [{ data: courseStatusChartData, backgroundColor: ['#f4a261', '#2a9d8f', '#e76f51'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // Rarely started & bookmarked courses
+    const rarelyStartedData = [{{#rarely_started_courses}}{{ratio}},{{/rarely_started_courses}}];
+    const rarelyStartedLabels = [{{#rarely_started_courses}}"{{name}}",{{/rarely_started_courses}}];
+    const { labels: rarelyStartedChartLabels, data: rarelyStartedChartData } = safeChartData(rarelyStartedData, rarelyStartedLabels, 'No data');
+    const ctxRareStart = document.getElementById('bookmarkedRarelyStartedChart').getContext('2d');
+    new Chart(ctxRareStart, {
+      type: 'bar',
+      data: {
+        labels: rarelyStartedChartLabels,
+        datasets: [{ label: 'Bookmark / Start Ratio', data: rarelyStartedChartData, backgroundColor: '#f94144' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+    });
+  </script>
+</div>

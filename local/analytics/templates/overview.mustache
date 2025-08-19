@@ -1,83 +1,133 @@
 <div class="pd-16">
   <h2>Individual Report / ข้อมูลผู้ใช้งาน</h2>
+  <div class="analytics-summary">
+    <div class="analytics-section">
+      <h3>ข้อมูลผู้ใช้งาน</h3>
+      <ul>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">ชื่อ:</span>
+          <span>{{fullname}}</span>
+        </li>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">ตําแหน่ง:</span>
+          <span>{{position}}</span>
+        </li>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">แผนก:</span>
+          <span>{{department}}</span>
+        </li>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">ทีม:</span>
+          <span>{{team}}</span>
+        </li>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">วันที่สมัคร:</span>
+          <span>{{firstaccess}}</span>
+        </li>
+      </ul>
+    </div>
 
-  <h3>ข้อมูลผู้ใช้งาน</h3>
-  <ul>
-      <li>ชื่อ: {{fullname}}</li>
-      <li>ตําแหน่ง: {{position}}</li>
-      <li>แผนก: {{department}}</li>
-      <li>ทีม: {{team}}</li>
-      <li>วันที่สมัครเข้าใช้งาน: {{firstaccess}}</li>
-  </ul>
+    <div class="analytics-section">
+      <h3>สถิติการเรียนรู้ของตนเอง</h3>
+      <ul>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">จำนวนคอร์สที่ลงทะเบียน:</span>
+          <span>{{courses_enrolled}}</span>
+        </li>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">จำนวนคอร์สที่กำลังเรียน:</span>
+          <span>{{courses_inprogress}}</span>
+        </li>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">จำนวนคอร์สที่เรียนจบแล้ว:</span>
+          <span>{{courses_completed}}</span>
+        </li>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">จำนวนคอร์สที่บันทึกไว้:</span>
+          <span>{{courses_saved}}</span>
+        </li>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">คะแนนเฉลี่ย:</span>
+          <span>{{average_quiz}}%</span>
+        </li>
+        <li class="analytics-list-item">
+          <span class="analytics-list-label">ประวัติการเข้าใช้งาน:</span>
+          <span>{{lastaccess}} / {{login_count}} ครั้ง</span>
+        </li>
+      </ul>
+    </div>
+  </div>
 
-  <h3>สถิติการเรียนรู้ของตนเอง</h3>
-  <ul>
-      <li>จํานวนคอร์สที่ลงทะเบียน: {{courses_enrolled}}</li>
-      <li>จํานวนคอร์สที่กําลังเรียน: {{courses_inprogress}}</li>
-      <li>จํานวนคอร์สที่เรียนจบแล้ว: {{courses_completed}}</li>
-      <li>จํานวนคอร์สที่บันทึกไว้: {{courses_saved}}</li>
-      <li>คะแนนเฉลี่ยจากแบบทดสอบทั้งหมด: {{average_quiz}}%</li>
-      <li>ประวัติการเข้าใช้งาน: {{lastaccess}} / {{login_count}} ครั้ง</li>
-  </ul>
+  <div class="analytics-section download-section">
+    <h3>ดาวน์โหลดรายงาน</h3>
+    <a href="{{download_pdf_url}}" class="btn btn-primary">Download PDF</a>
+    <a href="{{download_excel_url}}" class="btn btn-secondary">Download Excel</a>
+  </div>
 
-  <h3>ดาวน์โหลดรายงาน</h3>
-  <a href="{{download_pdf_url}}" class="btn btn-primary">Download PDF</a>
-  <a href="{{download_excel_url}}" class="btn btn-secondary">Download Excel</a>
-  <br><br>
   <h3>Visualization (กราฟ)</h3>
-  <div style="max-width:400px;">
-  <canvas id="completionChart"></canvas>
-</div>
-<div style="max-width:600px;">
-  <canvas id="quizHistoryChart"></canvas>
-</div>
-
+  <div class="charts-container">
+    <div class="analytics-chart-box">
+      <canvas id="completionChart"></canvas>
+    </div>
+    <div class="analytics-chart-box">
+      <canvas id="quizHistoryChart"></canvas>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  // Utility function for safe chart data
+  function safeChartData(data, labels, defaultLabel) {
+    if (!data || data.every(value => value === 0)) {
+      return { labels: [defaultLabel], data: [1] };
+    }
+    return { labels: labels, data: data };
+  }
+
   // Completion status pie chart
+  const completionChartData = [
+    {{chart_completion.completed}},
+    {{chart_completion.inprogress}},
+    {{chart_completion.enrolled}}
+  ];
+  const { labels: completionLabels, data: completionData } = safeChartData(completionChartData, ['Completed', 'In Progress', 'Enrolled'], 'No data available');
   const ctxCompletion = document.getElementById('completionChart').getContext('2d');
   new Chart(ctxCompletion, {
-      type: 'pie',
-      data: {
-          labels: ['Completed', 'In Progress', 'Enrolled'],
-          datasets: [{
-              label: 'Course Status',
-              data: [{{chart_completion.completed}}, {{chart_completion.inprogress}}, {{chart_completion.enrolled}}],
-              backgroundColor: ['#2a9d8f', '#f4a261', '#e9c46a']
-          }]
-      },
+    type: 'pie',
+    data: {
+      labels: completionLabels,
+      datasets: [{
+        label: 'Course Status',
+        data: completionData,
+        backgroundColor: ['#2a9d8f', '#f4a261', '#e9c46a']
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
   });
 
   // Quiz history line chart
+  const quizLabels = [{{#quiz_history}}"{{time}}",{{/quiz_history}}];
+  const quizData = [{{#quiz_history}}{{score}},{{/quiz_history}}];
   const ctxQuiz = document.getElementById('quizHistoryChart').getContext('2d');
-  const quizLabels = [
-      {{#quiz_history}}
-      "{{time}}",
-      {{/quiz_history}}
-  ];
-  const quizData = [
-      {{#quiz_history}}
-      {{score}},
-      {{/quiz_history}}
-  ];
   new Chart(ctxQuiz, {
-      type: 'line',
-      data: {
-          labels: quizLabels,
-          datasets: [{
-              label: 'Quiz Scores (%)',
-              data: quizData,
-              fill: false,
-              borderColor: '#264653',
-              tension: 0.1
-          }]
-      },
-      options: {
-          scales: {
-              y: { beginAtZero: true, max: 100 }
-          }
+    type: 'line',
+    data: {
+      labels: quizLabels,
+      datasets: [{
+        label: 'Quiz Scores (%)',
+        data: quizData,
+        fill: false,
+        borderColor: '#264653',
+        tension: 0.1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, max: 100 }
       }
+    }
   });
 </script>

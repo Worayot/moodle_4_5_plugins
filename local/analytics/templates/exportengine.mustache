@@ -1,19 +1,25 @@
 <div class="pd-16">
   <h2>Export Engine</h2>
+  
+  <div class="analytics-section">
+    <form method="get" action="" class="export-form">
+      <input type="hidden" name="nav" value="export_engine">
 
-  <form method="get" action="">
-    <input type="hidden" name="nav" value="export_engine">
+      <p class="form-label">เลือกรูปแบบ Export:</p>
+      <div class="radio-group">
+        {{#export_scope}}
+          <label class="radio-label">
+            <input type="radio" name="scope" value="{{key}}" {{#selected}}checked{{/selected}}> {{label}}
+          </label>
+        {{/export_scope}}
+      </div>
 
-    <p>เลือกรูปแบบ Export:</p>
-    {{#export_scope}}
-      <label>
-        <input type="radio" name="scope" value="{{key}}" {{#selected}}checked{{/selected}}> {{label}}
-      </label><br>
-    {{/export_scope}}
-
-    <p>ดาวน์โหลดข้อมูล:</p>
-    <button type="submit" name="download" value="csv">CSV</button>
-    <button type="submit" name="download" value="excel">Excel</button>
-    <button type="submit" name="download" value="pdf">PDF</button>
-  </form>
+      <p class="form-label">ดาวน์โหลดข้อมูล:</p>
+      <div class="btn-group">
+        <button type="submit" name="download" value="csv" class="btn btn-primary">CSV</button>
+        <button type="submit" name="download" value="excel" class="btn btn-success">Excel</button>
+        <button type="submit" name="download" value="pdf" class="btn btn-secondary">PDF</button>
+      </div>
+    </form>
+  </div>
 </div>
