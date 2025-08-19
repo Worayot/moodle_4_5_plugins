@@ -47,24 +47,24 @@ jobs:
         import smtplib
         from email.message import EmailMessage
 
-          sender = os.environ['EMAIL_SENDER']
-          password = os.environ['EMAIL_PASSWORD']
-          receiver = os.environ['EMAIL_RECEIVER']
+        sender = os.environ['EMAIL_SENDER']
+        password = os.environ['EMAIL_PASSWORD']
+        receiver = os.environ['EMAIL_RECEIVER']
 
-          msg = EmailMessage()
-          msg['Subject'] = 'Zipped folders from GitHub Action'
-          msg['From'] = sender
-          msg['To'] = receiver
-          msg.set_content('Attached are the zipped folders.')
+        msg = EmailMessage()
+        msg['Subject'] = 'Zipped folders from GitHub Action'
+        msg['From'] = sender
+        msg['To'] = receiver
+        msg.set_content('Attached are the zipped folders.')
 
-          folder = 'zipped_folders'
-          for filename in os.listdir(folder):
-              filepath = os.path.join(folder, filename)
-              with open(filepath, 'rb') as f:
-                  data = f.read()
-                  msg.add_attachment(data, maintype='application', subtype='zip', filename=filename)
+        folder = 'zipped_folders'
+        for filename in os.listdir(folder):
+            filepath = os.path.join(folder, filename)
+            with open(filepath, 'rb') as f:
+                data = f.read()
+                msg.add_attachment(data, maintype='application', subtype='zip', filename=filename)
 
-          with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-              smtp.login(sender, password)
-              smtp.send_message(msg)
-          EOF
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(sender, password)
+            smtp.send_message(msg)
+        EOF
