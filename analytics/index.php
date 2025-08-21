@@ -5,6 +5,8 @@ require_once(__DIR__ . '/../../config.php');
 require_login(); // must be logged in
 $context = context_system::instance();
 require_once($CFG->libdir . '/completionlib.php');
+require_once($CFG->dirroot . '/course/lib.php');
+use core_course\external\core_course_external;
 
 // Check if user has full access (manager/teacher/admin)
 $userhasfullaccess = has_capability('moodle/course:manageactivities', $context) || is_siteadmin();
@@ -554,54 +556,43 @@ if ($nav === 'overview') {
     $content = $OUTPUT->render_from_template('local_analytics/exportengine', $exportcontext);
 } elseif ($nav === 'course_insights') {
     $insightscontext = [
-        'saved_not_started_courses' => [],
+        'courses' => [],
     ];
+
     try {
-        // Query for admins to see all
+        global $DB;
+
         $sql = "
-            SELECT c.id, c.fullname,
-                   COUNT(b.id) AS bookmark_count,
-                   COUNT(e.userid) AS started_count
-              FROM {course} c
-         LEFT JOIN {local_bookmark} b ON b.courseid = c.id
-         LEFT JOIN {enrol} en ON en.courseid = c.id
-         LEFT JOIN {user_enrolments} e ON e.enrolid = en.id
-          GROUP BY c.id
-         HAVING COUNT(b.id) > 0 AND COUNT(e.userid) = 0
-         ORDER BY bookmark_count DESC";
+            SELECT
+                c.fullname AS course_name,
+                COUNT(f.userid) AS saved_count
+            FROM mdl_course c
+            LEFT JOIN mdl_favourite f
+                   ON f.itemid = c.id
+                  AND f.component = 'core_course'
+                  AND (f.itemtype = 'course' OR f.itemtype = 'courses')
+            WHERE c.id != 1
+            GROUP BY c.id, c.fullname
+            ORDER BY saved_count DESC
+        ";
 
-        $params = [];
-        if (!$is_admin) {
-            // For managers, filter by department
-            $sql = "
-                SELECT c.id, c.fullname,
-                       COUNT(b.id) AS bookmark_count,
-                       COUNT(e.userid) AS started_count
-                  FROM {course} c
-                  JOIN {local_bookmark} b ON b.courseid = c.id
-                  JOIN {user} u ON u.id = b.userid
-             LEFT JOIN {enrol} en ON en.courseid = c.id
-             LEFT JOIN {user_enrolments} e ON e.enrolid = en.id
-                 WHERE u.profile_field_department = :department
-              GROUP BY c.id
-              HAVING COUNT(b.id) > 0 AND COUNT(e.userid) = 0
-              ORDER BY bookmark_count DESC";
-            $params['department'] = $user_department;
-        }
+        // Reindex numerically
+        $courses = array_values($DB->get_records_sql($sql));
 
-        $courses = $DB->get_records_sql($sql, $params) ?: [];
-        $insightscontext['saved_not_started_courses'] = array_map(function($c) {
+        $insightscontext['courses'] = array_map(function ($c) {
             return [
-                'name' => $c->fullname ?? 'Unknown',
-                'bookmark_count' => (int)($c->bookmark_count ?? 0),
-                'started_count' => (int)($c->started_count ?? 0),
+                'name'        => $c->course_name,
+                'saved_count' => (int)($c->saved_count ?? 0),
             ];
         }, $courses);
+
     } catch (\dml_exception $e) {
-        debugging("Error fetching saved-but-not-started courses: " . $e->getMessage(), DEBUG_DEVELOPER);
+        debugging("Error fetching course insights: " . $e->getMessage(), DEBUG_DEVELOPER);
     }
+
     $content = $OUTPUT->render_from_template('local_analytics/courseinsights', $insightscontext);
-} else {
+}
+else {
     $content = '';
 }
 // Render layout
