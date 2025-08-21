@@ -2,39 +2,56 @@
 // local/analytics/index.php
 require_once(__DIR__ . '/../../config.php');
 
-require_login();
+require_login(); // must be logged in
 $context = context_system::instance();
-require_capability('local/analytics:view', $context);
-
-// Include necessary libraries
-require_once($CFG->dirroot . '/user/lib.php');
-require_once($CFG->dirroot . '/course/lib.php');
 require_once($CFG->libdir . '/completionlib.php');
-require_once($CFG->libdir . '/tcpdf/tcpdf.php');
-require_once($CFG->dirroot . '/lib/phpspreadsheet/vendor/autoload.php');
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
+// Check if user has full access (manager/teacher/admin)
+$userhasfullaccess = has_capability('moodle/course:manageactivities', $context) || is_siteadmin();
+
+// Require capability only for full-access users
+if ($userhasfullaccess) {
+    require_capability('local/analytics:view', $context);
+}
+
+// Page setup
 $PAGE->set_context($context);
 $PAGE->set_title(get_string('pluginname', 'local_analytics'));
 $PAGE->set_heading(get_string('pluginname', 'local_analytics'));
 $PAGE->set_pagelayout('report');
 $PAGE->requires->css(new moodle_url('/local/analytics/styles.css'));
 
+// Determine requested nav
 $nav = optional_param('nav', 'overview', PARAM_ALPHANUMEXT);
-$downloadformat = optional_param('download', '', PARAM_ALPHANUMEXT);
 
-$navitems = [
-    ['key' => 'overview', 'icon' => '📊', 'label' => get_string('individualreport', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'overview'])],
-    ['key' => 'reports',  'icon' => '📈', 'label' => get_string('teamreport', 'local_analytics'),  'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'reports'])],
-    ['key' => 'organization_report', 'icon' => '🏢', 'label' => get_string('organizationreport', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'organization_report'])],
-    ['key' => 'advanced_analytics', 'icon' => '🧠', 'label' => get_string('advancedanalytics', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'advanced_analytics'])],
-    ['key' => 'export_engine', 'icon' => '💾', 'label' => get_string('exportengine', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'export_engine'])],
-    ['key' => 'course_insights', 'icon' => '💡', 'label' => get_string('courseinsights', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'course_insights'])]
+// Full list of nav items
+$allnavitems = [
+    'overview'            => ['icon' => '📊', 'label' => get_string('individualreport','local_analytics')],
+    'reports'             => ['icon' => '📈', 'label' => get_string('teamreport','local_analytics')],
+    'organization_report' => ['icon' => '🏢', 'label' => get_string('organizationreport','local_analytics')],
+    'advanced_analytics'  => ['icon' => '🧠', 'label' => get_string('advancedanalytics','local_analytics')],
+    'export_engine'       => ['icon' => '💾', 'label' => get_string('exportengine','local_analytics')],
+    'course_insights'     => ['icon' => '💡', 'label' => get_string('courseinsights','local_analytics')],
 ];
 
-foreach ($navitems as &$item) {
-    $item['active'] = ($nav === $item['key']);
+// Determine allowed nav keys
+$allowednavkeys = $userhasfullaccess ? array_keys($allnavitems) : ['overview'];
+
+// Force nav to allowed keys
+if (!in_array($nav, $allowednavkeys)) {
+    $nav = 'overview';
+}
+
+// Build nav items for rendering
+$navitems = [];
+foreach ($allowednavkeys as $key) {
+    $navitems[] = [
+        'key'    => $key,
+        'icon'   => $allnavitems[$key]['icon'],
+        'label'  => $allnavitems[$key]['label'],
+        'url'    => new moodle_url('/local/analytics/index.php', ['nav'=>$key]),
+        'active' => ($nav === $key),
+    ];
 }
 
 global $USER, $DB;
