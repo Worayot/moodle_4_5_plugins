@@ -5,7 +5,7 @@
     <form method="get" action="" class="export-form">
       <input type="hidden" name="nav" value="export_engine">
 
-      <p class="form-label">เลือกรูปแบบ Export:</p>
+      <p class="form-label">Select Export Format:</p>
       <div class="radio-group">
         {{#export_scope}}
           <label class="radio-label">
@@ -14,7 +14,7 @@
         {{/export_scope}}
       </div>
 
-      <p class="form-label">ดาวน์โหลดข้อมูล:</p>
+      <p class="form-label">Download Data:</p>
       <div class="btn-group">
         <button type="submit" name="download" value="csv" class="btn btn-primary">CSV</button>
         <button type="submit" name="download" value="excel" class="btn btn-success">Excel</button>

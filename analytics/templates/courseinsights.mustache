@@ -2,30 +2,28 @@
   <h2>Course Insights</h2>
 
   <div class="analytics-section">
-    <h3>คอร์สที่ถูกบันทึกไว้ แต่ยังไม่ได้เริ่มเรียน:</h3>
+    <h3>Course Bookmark Overview:</h3>
     <div class="table-responsive">
-      <table class="table table-striped">
+      <table class="table analytics-table table-striped">
         <thead>
           <tr>
-            <th>ชื่อคอร์ส</th>
-            <th>จำนวนผู้บันทึก</th>
-            <th>จำนวนผู้เริ่มเรียน</th>
+            <th>Course Name</th>
+            <th>Saved (Not Started)</th>
           </tr>
         </thead>
         <tbody>
-          {{#saved_not_started_courses}}
-          <tr>
-            <td>{{name}}</td>
-            <td>{{bookmark_count}}</td>
-            <td>{{started_count}}</td>
-          </tr>
-          {{/saved_not_started_courses}}
-          {{^saved_not_started_courses}}
-          <tr>
-            <td colspan="3">ไม่มีข้อมูล</td>
-          </tr>
-          {{/saved_not_started_courses}}
-        </tbody>
+  {{#courses}}
+  <tr>
+    <td>{{name}}</td>
+    <td>{{saved_count}}</td>
+  </tr>
+  {{/courses}}
+  {{^courses}}
+  <tr>
+    <td colspan="2">No data available</td>
+  </tr>
+  {{/courses}}
+</tbody>
       </table>
     </div>
   </div>

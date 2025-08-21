@@ -2,39 +2,58 @@
 // local/analytics/index.php
 require_once(__DIR__ . '/../../config.php');
 
-require_login();
+require_login(); // must be logged in
 $context = context_system::instance();
-require_capability('local/analytics:view', $context);
-
-// Include necessary libraries
-require_once($CFG->dirroot . '/user/lib.php');
-require_once($CFG->dirroot . '/course/lib.php');
 require_once($CFG->libdir . '/completionlib.php');
-require_once($CFG->libdir . '/tcpdf/tcpdf.php');
-require_once($CFG->dirroot . '/lib/phpspreadsheet/vendor/autoload.php');
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+require_once($CFG->dirroot . '/course/lib.php');
+use core_course\external\core_course_external;
 
+// Check if user has full access (manager/teacher/admin)
+$userhasfullaccess = has_capability('moodle/course:manageactivities', $context) || is_siteadmin();
+
+// Require capability only for full-access users
+if ($userhasfullaccess) {
+    require_capability('local/analytics:view', $context);
+}
+
+// Page setup
 $PAGE->set_context($context);
 $PAGE->set_title(get_string('pluginname', 'local_analytics'));
 $PAGE->set_heading(get_string('pluginname', 'local_analytics'));
 $PAGE->set_pagelayout('report');
 $PAGE->requires->css(new moodle_url('/local/analytics/styles.css'));
 
+// Determine requested nav
 $nav = optional_param('nav', 'overview', PARAM_ALPHANUMEXT);
-$downloadformat = optional_param('download', '', PARAM_ALPHANUMEXT);
 
-$navitems = [
-    ['key' => 'overview', 'icon' => '📊', 'label' => get_string('individualreport', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'overview'])],
-    ['key' => 'reports',  'icon' => '📈', 'label' => get_string('teamreport', 'local_analytics'),  'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'reports'])],
-    ['key' => 'organization_report', 'icon' => '🏢', 'label' => get_string('organizationreport', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'organization_report'])],
-    ['key' => 'advanced_analytics', 'icon' => '🧠', 'label' => get_string('advancedanalytics', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'advanced_analytics'])],
-    ['key' => 'export_engine', 'icon' => '💾', 'label' => get_string('exportengine', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'export_engine'])],
-    ['key' => 'course_insights', 'icon' => '💡', 'label' => get_string('courseinsights', 'local_analytics'), 'url' => new moodle_url('/local/analytics/index.php', ['nav' => 'course_insights'])]
+// Full list of nav items
+$allnavitems = [
+    'overview'            => ['icon' => '📊', 'label' => get_string('individualreport','local_analytics')],
+    'reports'             => ['icon' => '📈', 'label' => get_string('teamreport','local_analytics')],
+    'organization_report' => ['icon' => '🏢', 'label' => get_string('organizationreport','local_analytics')],
+    'advanced_analytics'  => ['icon' => '🧠', 'label' => get_string('advancedanalytics','local_analytics')],
+    'export_engine'       => ['icon' => '💾', 'label' => get_string('exportengine','local_analytics')],
+    'course_insights'     => ['icon' => '💡', 'label' => get_string('courseinsights','local_analytics')],
 ];
 
-foreach ($navitems as &$item) {
-    $item['active'] = ($nav === $item['key']);
+// Determine allowed nav keys
+$allowednavkeys = $userhasfullaccess ? array_keys($allnavitems) : ['overview'];
+
+// Force nav to allowed keys
+if (!in_array($nav, $allowednavkeys)) {
+    $nav = 'overview';
+}
+
+// Build nav items for rendering
+$navitems = [];
+foreach ($allowednavkeys as $key) {
+    $navitems[] = [
+        'key'    => $key,
+        'icon'   => $allnavitems[$key]['icon'],
+        'label'  => $allnavitems[$key]['label'],
+        'url'    => new moodle_url('/local/analytics/index.php', ['nav'=>$key]),
+        'active' => ($nav === $key),
+    ];
 }
 
 global $USER, $DB;
@@ -537,54 +556,43 @@ if ($nav === 'overview') {
     $content = $OUTPUT->render_from_template('local_analytics/exportengine', $exportcontext);
 } elseif ($nav === 'course_insights') {
     $insightscontext = [
-        'saved_not_started_courses' => [],
+        'courses' => [],
     ];
+
     try {
-        // Query for admins to see all
+        global $DB;
+
         $sql = "
-            SELECT c.id, c.fullname,
-                   COUNT(b.id) AS bookmark_count,
-                   COUNT(e.userid) AS started_count
-              FROM {course} c
-         LEFT JOIN {local_bookmark} b ON b.courseid = c.id
-         LEFT JOIN {enrol} en ON en.courseid = c.id
-         LEFT JOIN {user_enrolments} e ON e.enrolid = en.id
-          GROUP BY c.id
-         HAVING COUNT(b.id) > 0 AND COUNT(e.userid) = 0
-         ORDER BY bookmark_count DESC";
+            SELECT
+                c.fullname AS course_name,
+                COUNT(f.userid) AS saved_count
+            FROM mdl_course c
+            LEFT JOIN mdl_favourite f
+                   ON f.itemid = c.id
+                  AND f.component = 'core_course'
+                  AND (f.itemtype = 'course' OR f.itemtype = 'courses')
+            WHERE c.id != 1
+            GROUP BY c.id, c.fullname
+            ORDER BY saved_count DESC
+        ";
 
-        $params = [];
-        if (!$is_admin) {
-            // For managers, filter by department
-            $sql = "
-                SELECT c.id, c.fullname,
-                       COUNT(b.id) AS bookmark_count,
-                       COUNT(e.userid) AS started_count
-                  FROM {course} c
-                  JOIN {local_bookmark} b ON b.courseid = c.id
-                  JOIN {user} u ON u.id = b.userid
-             LEFT JOIN {enrol} en ON en.courseid = c.id
-             LEFT JOIN {user_enrolments} e ON e.enrolid = en.id
-                 WHERE u.profile_field_department = :department
-              GROUP BY c.id
-              HAVING COUNT(b.id) > 0 AND COUNT(e.userid) = 0
-              ORDER BY bookmark_count DESC";
-            $params['department'] = $user_department;
-        }
+        // Reindex numerically
+        $courses = array_values($DB->get_records_sql($sql));
 
-        $courses = $DB->get_records_sql($sql, $params) ?: [];
-        $insightscontext['saved_not_started_courses'] = array_map(function($c) {
+        $insightscontext['courses'] = array_map(function ($c) {
             return [
-                'name' => $c->fullname ?? 'Unknown',
-                'bookmark_count' => (int)($c->bookmark_count ?? 0),
-                'started_count' => (int)($c->started_count ?? 0),
+                'name'        => $c->course_name,
+                'saved_count' => (int)($c->saved_count ?? 0),
             ];
         }, $courses);
+
     } catch (\dml_exception $e) {
-        debugging("Error fetching saved-but-not-started courses: " . $e->getMessage(), DEBUG_DEVELOPER);
+        debugging("Error fetching course insights: " . $e->getMessage(), DEBUG_DEVELOPER);
     }
+
     $content = $OUTPUT->render_from_template('local_analytics/courseinsights', $insightscontext);
-} else {
+}
+else {
     $content = '';
 }
 // Render layout
