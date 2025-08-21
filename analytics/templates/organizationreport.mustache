@@ -2,14 +2,14 @@
   <h2>Organization Report</h2>
 
   <div class="analytics-section">
-    <h3>ภาพรวมองค์กร</h3>
+    <h3>Organization Overview</h3>
     <div class="analytics-summary">
       <div class="summary-item">
-        <span class="summary-label">จำนวนผู้ใช้งานทั้งหมด:</span>
+        <span class="summary-label">Total Users:</span>
         <span class="summary-value">{{total_users}}</span>
       </div>
       <div class="summary-item">
-        <span class="summary-label">สถานะการเรียนรู้:</span>
+        <span class="summary-label">Learning Status:</span>
         <span class="summary-value">
           Completed: {{status.completed}}<br>
           In Progress: {{status.inprogress}}<br>
@@ -20,7 +20,7 @@
   </div>
 
   <div class="analytics-section">
-    <h3>คะแนนเฉลี่ยตามแผนก/ทีม</h3>
+    <h3>Average Score by Department/Team</h3>
     <ul class="analytics-list-section">
       {{#departments}}
       <li class="analytics-list-item">
@@ -35,16 +35,16 @@
   </div>
 
   <div class="analytics-section">
-    <h3>รายงานรายบุคคลในองค์กร</h3>
+    <h3>Individual Report</h3>
     <div class="table-responsive">
       <table class="table table-striped">
         <thead>
           <tr>
-            <th>ชื่อพนักงาน</th>
-            <th>คอร์ส</th>
-            <th>สถานะการเรียนรู้</th>
-            <th>คะแนนเฉลี่ย</th>
-            <th>วันเข้าครั้งล่าสุด</th>
+            <th>Employee Name</th>
+            <th>Courses</th>
+            <th>Learning Status</th>
+            <th>Average Score</th>
+            <th>Last Access Date</th>
           </tr>
         </thead>
         <tbody>
@@ -96,7 +96,7 @@
   </div>
 
   <div class="analytics-section">
-    <h3>Visualization (กราฟ)</h3>
+    <h3>Visualization (Graphs)</h3>
     <div class="charts-container">
       <div class="analytics-chart-box">
         <canvas id="platformAccessChart"></canvas>

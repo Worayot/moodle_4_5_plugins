@@ -3,12 +3,12 @@
 
   <div class="analytics-summary">
     <div class="analytics-section">
-      <h3>คอร์สที่ได้รับความนิยมสูงสุด</h3>
+      <h3>Most Popular Courses</h3>
       <ul>
         {{#popular_courses}}
           <li class="analytics-list-item">
             <span>{{name}}</span>
-            <span>ลงทะเบียน {{enrol_count}} คน</span>
+            <span>{{enrol_count}} Enrolled</span>
           </li>
         {{/popular_courses}}
         {{^popular_courses}}
@@ -18,7 +18,7 @@
     </div>
 
     <div class="analytics-section">
-      <h3>อัตราการเรียนจบแยกตามแผนก / ทีม</h3>
+      <h3>Completion Rate by Department / Team</h3>
       <ul>
         {{#department_completion}}
           <li class="analytics-list-item">
@@ -34,22 +34,22 @@
   </div>
 
   <div class="analytics-section">
-    <h3>รายชื่อพนักงานที่เรียนโดดเด่น</h3>
+    <h3>Top Performing Employees</h3>
     <ul>
       {{#top_learners}}
         <li class="analytics-list-item">
           <span>{{firstname}} {{lastname}}</span>
-          <span>คะแนนเฉลี่ย {{avg_score}}%</span>
+          <span>Average Score {{avg_score}}%</span>
         </li>
       {{/top_learners}}
       {{^top_learners}}
         <li class="analytics-list-item">No data available</li>
-      {{/top_learners}}
+        {{/top_learners}}
     </ul>
   </div>
 
   <div class="analytics-section">
-    <h3>รายชื่อพนักงานที่เรียนล่าช้า</h3>
+    <h3>Late-Paced Employees</h3>
     <ul>
       {{#lagging_learners}}
         <li class="analytics-list-item">{{firstname}} {{lastname}}</li>

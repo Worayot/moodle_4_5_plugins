@@ -6,7 +6,7 @@
     <div class="filters">
       <form method="get" action="">
         <input type="hidden" name="nav" value="reports">
-        <input type="text" name="search" placeholder="ค้นหาชื่อพนักงาน" value="{{search}}">
+        <input type="text" name="search" placeholder="Search Employee Name" value="{{search}}">
         <select name="status">
           <option value="">All Status</option>
           <option value="Completed" {{#status_completed}}selected{{/status_completed}}>Completed</option>
@@ -20,22 +20,22 @@
 
   <div class="analytics-summary">
     <div class="analytics-section">
-      <h3>ข้อมูลรวมของทีม</h3>
+      <h3>Team Overview</h3>
       <ul>
         <li class="analytics-list-item">
-          <span class="analytics-list-label">จำนวนพนักงานในทีม:</span>
+          <span class="analytics-list-label">Number of Team Members:</span>
           <span>{{team_members}}</span>
         </li>
         <li class="analytics-list-item">
-          <span class="analytics-list-label">อัตราการเรียนจบเฉลี่ยของทีม:</span>
+          <span class="analytics-list-label">Team Average Completion Rate:</span>
           <span>{{avg_completion}}%</span>
         </li>
         <li class="analytics-list-item">
-          <span class="analytics-list-label">คะแนนเฉลี่ยรวมของทีม:</span>
+          <span class="analytics-list-label">Team Average Score:</span>
           <span>{{avg_quiz}}%</span>
         </li>
         <li class="analytics-list-item">
-          <span class="analytics-list-label">การเข้าใช้งาน:</span>
+          <span class="analytics-list-label">Usage:</span>
           <span>{{active_users}} Active / {{inactive_users}} Inactive</span>
         </li>
       </ul>
@@ -43,13 +43,13 @@
   </div>
 
   <div class="analytics-section">
-    <h3>รายงานรายบุคคล</h3>
+    <h3>Individual Report</h3>
     <div class="table-responsive">
       <table border="1" cellpadding="4" class="table table-striped">
         <thead>
           <tr>
-            <th>ชื่อ</th>
-            <th>คอร์สทั้งหมด</th>
+            <th>Name</th>
+            <th>Total Courses</th>
             <th>Completed</th>
             <th>In Progress</th>
             <th>Avg Quiz</th>
@@ -80,13 +80,13 @@
   </div>
 
   <div class="analytics-section download-section">
-    <h3>ดาวน์โหลดรายงาน</h3>
-    <a href="{{download_pdf_url}}" class="btn btn-primary">ดาวน์โหลด PDF</a>
-    <a href="{{download_excel_url}}" class="btn btn-success">ดาวน์โหลด Excel</a>
+    <h3>Download Report</h3>
+    <a href="{{download_pdf_url}}" class="btn btn-primary">Download PDF</a>
+    <a href="{{download_excel_url}}" class="btn btn-success">Download Excel</a>
   </div>
 
   <div class="analytics-section">
-    <h3>Visualization (กราฟ)</h3>
+    <h3>Visualization (Graphs)</h3>
     <div class="charts-container">
       <div class="analytics-chart-box">
         <canvas id="teamCompletionChart"></canvas>
